@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { sincronizarGoogleSheets } from './constants'
 import Dashboard from './Dashboard'
 import Cotizador from './Cotizador'
 import ListaPaises from './ListaPaises'
@@ -8,12 +9,19 @@ import LoginAdmin from './LoginAdmin'
 function App() {
   const [ruta, setRuta] = useState('inicio')
   const [auth, setAuth] = useState(false)
+  const [sheetsReady, setSheetsReady] = useState(false)
 
-  // Autenticación inicial
+  // Autenticación inicial y Sincronización
   useEffect(() => {
     const isAuth = sessionStorage.getItem('jk_admin_auth')
     if (isAuth) setAuth(true)
+
+    sincronizarGoogleSheets().finally(() => {
+        setSheetsReady(true)
+    })
   }, [])
+
+
 
   // Enrutamiento básico con hash
   useEffect(() => {
@@ -43,6 +51,16 @@ function App() {
     navegar('inicio')
   }
 
+  if (!sheetsReady) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'white', flexDirection: 'column', gap: '1rem' }}>
+        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ fontWeight: 600, letterSpacing: '0.05em' }}>Conectando a Google Sheets...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
@@ -65,8 +83,8 @@ function App() {
             style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             onClick={() => navegar('inicio')}
           >
-            <div style={{ width: '2.6rem', height: '2.6rem', background: 'white', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0.15rem', boxShadow: '0 0 10px rgba(16,185,129,0.2)' }}>
-              <img src="/logo_jk_final.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <div style={{ width: '2.6rem', height: '2.6rem', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0.15rem' }}>
+              <img src="./logo-jk-transparente.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <span>GRUPO JK</span>
           </div>

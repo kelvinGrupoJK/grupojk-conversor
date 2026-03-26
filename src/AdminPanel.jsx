@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { cargarPaises, calcularTasaEnvio, calcularTasaRecibo, formatearMonto } from './constants'
+import { cargarPaises, calcularTasaEnvio, calcularTasaRecibo, formatearMonto, getFlagUrl } from './constants'
 
 export default function AdminPanel({ onLogout }) {
   const [paises, setPaises] = useState([])
@@ -349,7 +349,7 @@ export default function AdminPanel({ onLogout }) {
                   overflow: 'hidden'
                 }}>
                   <img 
-                    src={`https://flagcdn.com/w80/${(pais.iso2 || pais.codigo.substring(0,2)).toLowerCase()}.png`}
+                    src={getFlagUrl(pais)}
                     alt={pais.nombre}
                     style={{ width: '70%', height: '70%', objectFit: 'contain' }}
                   />

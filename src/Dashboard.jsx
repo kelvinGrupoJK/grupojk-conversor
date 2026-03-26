@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { cargarPaises, PAISES_DESTACADOS_IDS, calcularTasaPublica, formatearMonto } from './constants'
+import { cargarPaises, PAISES_DESTACADOS_IDS, calcularTasaPublica, formatearMonto, getFlagUrl } from './constants'
 
 export default function Dashboard({ onNavegar }) {
   const [paises, setPaises] = useState([])
@@ -42,12 +42,11 @@ export default function Dashboard({ onNavegar }) {
         }} />
         <div style={{ 
           width: '7.5rem', height: '7.5rem', margin: '0 auto 1.5rem', 
-          background: 'white', borderRadius: '1.5rem', padding: '0.5rem', 
-          boxShadow: '0 15px 40px rgba(0,0,0,0.5), 0 0 20px rgba(16,185,129,0.2)',
+          borderRadius: '1.5rem', padding: '0.1rem', 
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           position: 'relative', zIndex: 1
         }}>
-          <img src="/logo_jk_final.png" alt="Logo JK" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src="./logo-jk-transparente.png" alt="Logo JK" style={{ width: '150%', height: '150%', objectFit: 'contain' }} />
         </div>
         <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', marginBottom: '1rem', color: 'white' }}>
           GRUPO JK
@@ -111,7 +110,7 @@ export default function Dashboard({ onNavegar }) {
           >
             <div style={{ width: '4rem', height: '2.5rem', margin: '0 auto 1.2rem', overflow: 'hidden', borderRadius: '0.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               <img 
-                src={`https://flagcdn.com/w80/${(pais.iso2 || pais.codigo.substring(0,2)).toLowerCase()}.png`}
+                src={getFlagUrl(pais)}
                 alt={pais.nombre}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />

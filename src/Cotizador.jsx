@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { cargarPaises, calcularTasaPublica, calcularConversion, formatearMonto, calcularTasaEnvio, calcularTasaRecibo } from './constants'
+import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl } from './constants'
 
 // Componente interno para selector de países con buscador
 function PaisSelector({ label, paises, selected, onSelect }) {
@@ -33,7 +33,7 @@ function PaisSelector({ label, paises, selected, onSelect }) {
       >
         {selected ? (
           <img 
-            src={`https://flagcdn.com/w40/${(selected.iso2 || selected.codigo.substring(0,2)).toLowerCase()}.png`}
+            src={getFlagUrl(selected)}
             alt={selected.nombre}
             style={{ width: '1.4rem', height: '1rem', objectFit: 'contain', borderRadius: '2px' }}
           />
@@ -87,7 +87,7 @@ function PaisSelector({ label, paises, selected, onSelect }) {
                   onMouseLeave={e => e.currentTarget.style.background = selected?.id === p.id ? 'rgba(16,185,129,0.15)' : 'transparent'}
                 >
                   <img 
-                    src={`https://flagcdn.com/w40/${(p.iso2 || p.codigo.substring(0,2)).toLowerCase()}.png`}
+                    src={getFlagUrl(p)}
                     alt={p.nombre}
                     style={{ width: '1.4rem', height: '1rem', objectFit: 'contain', borderRadius: '2px' }}
                   />
@@ -120,82 +120,137 @@ export default function Cotizador() {
   const [monto, setMonto] = useState(100)
   const [montoRecibir, setMontoRecibir] = useState(0)
   const [tasaDisplay, setTasaDisplay] = useState({ base: '', valor: 0, unidad: '' })
+  const [lastEdited, setLastEdited] = useState('enviar') // 'enviar' | 'recibir'
 
   useEffect(() => {
     const todos = cargarPaises()
     setPaises(todos)
-    // Por defecto: Ecuador (USD) → Colombia (COP)
-    const ecuador = todos.find(p => p.id === 9)  // Ecuador USD
-    const colombia = todos.find(p => p.id === 8)  // Colombia COP
-    setOrigen(ecuador)
-    setDestino(colombia)
+    
+    // Buscar en memoria, sino usar valores por defecto (Ecuador -> Colombia)
+    const savedOrigenId = localStorage.getItem('jk_last_origen')
+    const savedDestinoId = localStorage.getItem('jk_last_destino')
+
+    let defaultOrigen = todos.find(p => p.id === 9)
+    let defaultDestino = todos.find(p => p.id === 8)
+
+    if (savedOrigenId) {
+      const p = todos.find(x => x.id === parseInt(savedOrigenId))
+      if (p) defaultOrigen = p
+    }
+    if (savedDestinoId) {
+      const p = todos.find(x => x.id === parseInt(savedDestinoId))
+      if (p) defaultDestino = p
+    }
+
+    setOrigen(defaultOrigen)
+    setDestino(defaultDestino)
   }, [])
 
   useEffect(() => {
-    if (origen && destino && monto >= 0 && paises.length > 0) {
-      const res = calcularConversion(origen, destino, monto, paises)
-      const resRedondeado = Math.round((res + Number.EPSILON) * 100) / 100
-      setMontoRecibir(resRedondeado)
-      
-      // Tasa cruzada: cuántas unidades de destino por 1 unidad de origen
-      const tc = calcularConversion(origen, destino, 1, paises)
-      
-      // Personalizar display de tasa según USD
-      if (origen.codigo === 'USD' && destino.codigo !== 'USD') {
-        setTasaDisplay({ base: '1 USD', valor: calcularTasaEnvio(destino), unidad: destino.codigo })
-      } else if (destino.codigo === 'USD' && origen.codigo !== 'USD') {
-        setTasaDisplay({ base: '1 USD', valor: calcularTasaRecibo(origen), unidad: origen.codigo })
-      } else {
-        setTasaDisplay({ base: `1 ${origen.codigo}`, valor: tc, unidad: destino.codigo })
+    if (origen && destino && paises.length > 0) {
+      const tOrigenRecibo = calcularTasaRecibo(origen)
+      const tDestinoEnvio = calcularTasaEnvio(destino)
+      const isDisp = tOrigenRecibo > 0 && tDestinoEnvio > 0
+
+      // Actualizar tasa display (siempre)
+      if (isDisp) {
+        const tc = calcularConversion(origen, destino, 1, paises)
+        if (isCajaDolar(origen) && !isCajaDolar(destino)) {
+          setTasaDisplay({ base: `1 ${origen.codigo}`, valor: tc, unidad: destino.codigo })
+        } else if (!isCajaDolar(origen) && isCajaDolar(destino)) {
+          const tcInverso = calcularConversionInversa(origen, destino, 1, paises)
+          setTasaDisplay({ base: `1 ${destino.codigo}`, valor: tcInverso, unidad: origen.codigo })
+        } else {
+          setTasaDisplay({ base: `1 ${origen.codigo}`, valor: tc, unidad: destino.codigo })
+        }
+      }
+
+      // Solo recalcular el campo CONTRARIO al que editó el usuario
+      if (lastEdited === 'enviar' && monto >= 0) {
+        if (isDisp) {
+          const res = calcularConversion(origen, destino, monto, paises)
+          setMontoRecibir(Math.round((res + Number.EPSILON) * 100) / 100)
+        } else {
+          setMontoRecibir(0)
+        }
+      } else if (lastEdited === 'recibir' && montoRecibir > 0) {
+        if (isDisp) {
+          const nuevoMonto = calcularConversionInversa(origen, destino, montoRecibir, paises)
+          const esCruceDolar = isCajaDolar(origen) && isCajaDolar(destino)
+          setMonto(esCruceDolar ? Math.ceil(nuevoMonto) : Math.round((nuevoMonto + Number.EPSILON) * 100) / 100)
+        } else {
+          setMonto(0)
+        }
       }
     }
-  }, [origen, destino, paises])
+  }, [origen, destino, paises, monto, montoRecibir, lastEdited])
 
   const handleMontoEnviarChange = (valStr) => {
     const val = valStr === '' ? 0 : parseFloat(valStr)
+    setLastEdited('enviar')
     setMonto(val)
-    if (origen && destino && paises.length > 0) {
-      const res = calcularConversion(origen, destino, val, paises)
-      const resRed = Math.round((res + Number.EPSILON) * 100) / 100
-      setMontoRecibir(resRed)
-    }
   }
 
   const handleMontoRecibirChange = (valStr) => {
     const val = valStr === '' ? 0 : parseFloat(valStr)
+    setLastEdited('recibir')
     setMontoRecibir(val)
-    if (origen && destino && paises.length > 0) {
-      const tOrigenRecibo = calcularTasaRecibo(origen)
-      const tDestinoEnvio = calcularTasaEnvio(destino)
-      if (tDestinoEnvio > 0) {
-        const nuevoMontoEnviar = (val / tDestinoEnvio) * tOrigenRecibo
-        const montoEnvRed = Math.round((nuevoMontoEnviar + Number.EPSILON) * 100) / 100
-        setMonto(montoEnvRed)
-      }
-    }
   }
 
   const handleOrigen = (id) => {
     const p = paises.find(p => p.id === parseInt(id))
     setOrigen(p)
+    if (p) localStorage.setItem('jk_last_origen', p.id)
+    
     // No permitir mismo país en ambos lados
-    if (destino && destino.id === p.id) setDestino(null)
+    if (destino && destino.id === p.id) {
+      setDestino(null)
+      localStorage.removeItem('jk_last_destino')
+    }
   }
 
   const handleDestino = (id) => {
     const p = paises.find(p => p.id === parseInt(id))
     setDestino(p)
-    if (origen && origen.id === p.id) setOrigen(null)
+    if (p) localStorage.setItem('jk_last_destino', p.id)
+
+    if (origen && origen.id === p.id) {
+      setOrigen(null)
+      localStorage.removeItem('jk_last_origen')
+    }
   }
 
   const intercambiar = () => {
-    const temp = origen
-    setOrigen(destino)
-    setDestino(temp)
+    const tempO = origen
+    const tempD = destino
+    setOrigen(tempD)
+    setDestino(tempO)
+
+    if (tempD) localStorage.setItem('jk_last_origen', tempD.id)
+    else localStorage.removeItem('jk_last_origen')
+
+    if (tempO) localStorage.setItem('jk_last_destino', tempO.id)
+    else localStorage.removeItem('jk_last_destino')
   }
 
   const tasaPublicaOrigen = origen ? calcularTasaPublica(origen) : 0
   const tasaPublicaDestino = destino ? calcularTasaPublica(destino) : 0
+
+  const tOrigenCheck = origen ? calcularTasaRecibo(origen) : 1;
+  const tDestinoCheck = destino ? calcularTasaEnvio(destino) : 1;
+  const isDisponible = origen && destino ? (tOrigenCheck > 0 && tDestinoCheck > 0) : true;
+
+  const getMotivoNoDisponible = () => {
+    if (!origen || !destino || isDisponible) return '';
+    if (tOrigenCheck === 0 && tDestinoCheck === 0) {
+      return `Por el momento no estamos recibiendo ${origen.moneda} (${origen.nombre}) ni enviando hacia ${destino.nombre}.`;
+    } else if (tOrigenCheck === 0) {
+      return `En el caso de ${origen.nombre}, es que no recibimos ${origen.moneda} por el momento.`;
+    } else if (tDestinoCheck === 0) {
+      return `En el caso de ${destino.nombre}, es que no tenemos envíos en ${destino.moneda} por el momento.`;
+    }
+    return `La tasa de cambio para ${origen.nombre} o ${destino.nombre} está en actualización.`;
+  }
 
   // Texto explicativo
   const explicacion = () => {
@@ -229,20 +284,20 @@ export default function Cotizador() {
               Monto a Enviar
             </label>
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '1.2rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-color)', fontWeight: 800, fontSize: '1.3rem' }}>$</span>
+              {origen && (
+                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-color)', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.05em' }}>
+                  {origen.codigo}
+                </span>
+              )}
               <input
                 type="number"
                 className="input-field"
                 value={monto || ''}
                 min="0"
+                disabled={!isDisponible}
                 onChange={e => handleMontoEnviarChange(e.target.value)}
-                style={{ paddingLeft: '2.5rem', fontSize: '1.5rem', fontWeight: 700, paddingRight: '3.5rem' }}
+                style={{ paddingLeft: '3.5rem', fontSize: '1.5rem', fontWeight: 700, paddingRight: '1rem', opacity: isDisponible ? 1 : 0.5 }}
               />
-              {origen && (
-                <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-low)', fontSize: '0.7rem', fontWeight: 700 }}>
-                  {origen.codigo}
-                </span>
-              )}
             </div>
           </div>
 
@@ -252,20 +307,20 @@ export default function Cotizador() {
               Monto a Recibir
             </label>
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '1.2rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--error-color)', fontWeight: 800, fontSize: '1.3rem' }}>$</span>
+              {destino && (
+                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--error-color)', fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.05em' }}>
+                  {destino.codigo}
+                </span>
+              )}
               <input
                 type="number"
                 className="input-field"
                 value={montoRecibir || ''}
                 min="0"
+                disabled={!isDisponible}
                 onChange={e => handleMontoRecibirChange(e.target.value)}
-                style={{ paddingLeft: '2.5rem', fontSize: '1.5rem', fontWeight: 700, paddingRight: '3.5rem', border: '1px solid rgba(255, 113, 108, 0.3)' }}
+                style={{ paddingLeft: '3.5rem', fontSize: '1.5rem', fontWeight: 700, paddingRight: '1rem', border: '1px solid rgba(255, 113, 108, 0.3)', opacity: isDisponible ? 1 : 0.5 }}
               />
-              {destino && (
-                <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-low)', fontSize: '0.7rem', fontWeight: 700 }}>
-                  {destino.codigo}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -311,8 +366,36 @@ export default function Cotizador() {
           />
         </div>
 
+        {/* MENSAJE DE NO DISPONIBLE */}
+        {origen && destino && !isDisponible && (
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '1.5rem',
+            padding: '2rem',
+            textAlign: 'center',
+            marginBottom: '2.5rem',
+            animation: 'slideUp 0.6s ease-out'
+          }}>
+            <p style={{
+              fontSize: '1.3rem',
+              fontWeight: 700,
+              color: 'var(--error-color)',
+              marginBottom: '0.5rem',
+            }}>
+              ⚠️ Conversión no disponible por el momento
+            </p>
+            <p style={{ color: 'var(--text-low)', fontSize: '0.95rem', lineHeight: 1.6 }}>
+              {getMotivoNoDisponible()}<br/>
+              <span style={{opacity: 0.6, fontSize: '0.8rem', display: 'inline-block', marginTop: '0.5rem'}}>
+                Por favor, intenta más tarde o contacta a nuestros asesores.
+              </span>
+            </p>
+          </div>
+        )}
+
         {/* TASA APLICADA DESTACADA EN EL MEDIO */}
-        {origen && destino && (
+        {origen && destino && isDisponible && (
           <div style={{ textAlign: 'center', marginTop: '-1rem', marginBottom: '2.5rem' }}>
             <div style={{ 
               display: 'inline-flex',
@@ -333,7 +416,7 @@ export default function Cotizador() {
         )}
 
         {/* Explicación dinámica */}
-        {origen && destino && (
+        {origen && destino && isDisponible && (
           <div style={{
             background: 'rgba(16,185,129,0.07)',
             border: '1px solid rgba(16,185,129,0.2)',
@@ -349,7 +432,7 @@ export default function Cotizador() {
         )}
 
         {/* Resultado */}
-        {montoRecibir > 0 && origen && destino && (
+        {montoRecibir > 0 && origen && destino && isDisponible && (
           <div style={{
             background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,183,127,0.06) 100%)',
             border: '1px solid rgba(16,185,129,0.3)',
@@ -409,7 +492,7 @@ export default function Cotizador() {
         {origen && (
           <>
             <img 
-              src={`https://flagcdn.com/w40/${(origen.iso2 || origen.codigo.substring(0,2)).toLowerCase()}.png`}
+              src={getFlagUrl(origen)}
               alt={origen.nombre}
               style={{ width: '1.2rem', height: '0.9rem', objectFit: 'contain' }}
             />

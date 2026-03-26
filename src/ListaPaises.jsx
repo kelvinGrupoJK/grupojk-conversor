@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { cargarPaises, calcularTasaPublica, formatearMonto } from './constants'
+import { cargarPaises, calcularTasaPublica, formatearMonto, getFlagUrl } from './constants'
 
 // Gráfica SVG simple de barras — normalizadas al máximo
 function GraficaBarras({ paises }) {
@@ -76,11 +76,10 @@ function GraficaBarras({ paises }) {
               >
                 {label}
               </text>
-              {/* Bandera del país */}
               <image
                 x={x + barWidth / 2 - 10} y={HEIGHT - PADDING.bottom + 4}
                 width="20" height="15"
-                href={`https://flagcdn.com/w40/${(pais.iso2 || pais.codigo.substring(0,2)).toLowerCase()}.png`}
+                href={getFlagUrl(pais)}
               />
               {/* Código */}
               <text
@@ -204,7 +203,7 @@ export default function ListaPaises() {
             >
               <div style={{ width: '2.5rem', height: '1.6rem', borderRadius: '0.3rem', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
                 <img 
-                  src={`https://flagcdn.com/w80/${(pais.iso2 || pais.codigo.substring(0,2)).toLowerCase()}.png`}
+                  src={getFlagUrl(pais)}
                   alt={pais.nombre}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />

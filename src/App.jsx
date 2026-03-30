@@ -61,8 +61,9 @@ function App() {
   if (!sheetsReady) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'white', flexDirection: 'column', gap: '1rem' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ fontWeight: 600, letterSpacing: '0.05em' }}>Conectando a Google Sheets...</p>
+        <div style={{ fontSize: '3.5rem', animation: 'spin 2s linear infinite', display: 'inline-block' }}>🚛</div>
+        <p style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.05em' }}>Cargando el Camión...</p>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-low)', marginTop: '-0.5rem' }}>GRUPO JK · Tasas en Tiempo Real</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )

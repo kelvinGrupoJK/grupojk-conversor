@@ -105,9 +105,16 @@ function GraficaBarras({ paises }) {
 export default function ListaPaises() {
   const [paises, setPaises] = useState([])
   const [busqueda, setBusqueda] = useState('')
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
   useEffect(() => {
     setPaises(cargarPaises())
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const paisesFiltrados = paises.filter(p =>
@@ -117,7 +124,7 @@ export default function ListaPaises() {
   )
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1.5rem' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '1.5rem 1rem' : '2rem 1.5rem' }}>
 
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', marginBottom: '0.5rem' }}>
@@ -157,80 +164,111 @@ export default function ListaPaises() {
         </div>
       </div>
 
-      {/* Tabla */}
+      {/* Tabla / Tarjetas */}
       <div className="glass" style={{ padding: '0', overflow: 'hidden' }}>
-        {/* Header */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '2.5rem 1fr 1fr 1fr 1fr',
-          gap: '1rem',
-          padding: '1rem 1.5rem',
-          background: 'rgba(0,0,0,0.2)',
-          borderBottom: '1px solid var(--glass-border)',
-        }}>
-          {['', 'País', 'Moneda', 'Código ISO', 'Tasa por USD'].map((h, i) => (
-            <div key={i} style={{
-              fontSize: '0.7rem',
-              color: 'var(--text-low)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              fontWeight: 700,
-              textAlign: i === 4 ? 'right' : 'left',
+        {isMobile ? (
+          // Vista de tarjetas para móvil y tablet
+          <div>
+            {paisesFiltrados.map((pais, idx) => {
+              const tp = calcularTasaPublica(pais)
+              const esUSD = pais.codigo === 'USD'
+              return (
+                <div
+                  key={pais.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.9rem 1rem',
+                    borderBottom: idx < paisesFiltrados.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                  }}
+                >
+                  {/* Bandera */}
+                  <div style={{ width: '2.8rem', height: '1.9rem', borderRadius: '0.3rem', overflow: 'hidden', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
+                    <img src={getFlagUrl(pais)} alt={pais.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  {/* Nombre + moneda */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pais.nombre}</p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-low)', marginTop: '1px' }}>{pais.moneda}</p>
+                  </div>
+                  {/* Código + tasa */}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <span className="badge badge-success" style={{ fontFamily: 'monospace', fontSize: '0.72rem', marginBottom: '0.3rem', display: 'inline-block' }}>{pais.codigo}</span>
+                    <p style={{ fontWeight: 800, color: esUSD ? 'var(--text-mid)' : 'var(--primary-color)', fontSize: '1rem', fontFamily: 'Manrope, sans-serif' }}>
+                      {esUSD ? '1.0000' : formatearMonto(tp, pais.codigo)}
+                    </p>
+                    <p style={{ fontSize: '0.65rem', color: 'var(--text-low)' }}>{pais.codigo}/USD</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          // Vista de tabla para desktop
+          <div>
+            {/* Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '2.5rem 1fr 1fr 1fr 1fr',
+              gap: '1rem',
+              padding: '1rem 1.5rem',
+              background: 'rgba(0,0,0,0.2)',
+              borderBottom: '1px solid var(--glass-border)',
             }}>
-              {h}
-            </div>
-          ))}
-        </div>
-
-        {/* Filas */}
-        {paisesFiltrados.map((pais, idx) => {
-          const tp = calcularTasaPublica(pais)
-          const esUSD = pais.codigo === 'USD'
-          return (
-            <div
-              key={pais.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '2.5rem 1fr 1fr 1fr 1fr',
-                gap: '1rem',
-                padding: '1rem 1.5rem',
-                borderBottom: idx < paisesFiltrados.length - 1 ? '1px solid var(--glass-border)' : 'none',
-                transition: 'background 0.2s',
-                alignItems: 'center',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ width: '2.5rem', height: '1.6rem', borderRadius: '0.3rem', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
-                <img 
-                  src={getFlagUrl(pais)}
-                  alt={pais.nombre}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </div>
-              <div>
-                <p style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>{pais.nombre}</p>
-              </div>
-              <div style={{ color: 'var(--text-low)', fontSize: '0.875rem' }}>{pais.moneda}</div>
-              <div>
-                <span className="badge badge-success" style={{ fontFamily: 'monospace' }}>
-                  {pais.codigo}
-                </span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{
-                  fontWeight: 800,
-                  color: esUSD ? 'var(--text-mid)' : 'var(--primary-color)',
-                  fontSize: '1.1rem',
-                  fontFamily: 'Manrope, sans-serif',
+              {['', 'País', 'Moneda', 'Código ISO', 'Tasa por USD'].map((h, i) => (
+                <div key={i} style={{
+                  fontSize: '0.7rem',
+                  color: 'var(--text-low)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: 700,
+                  textAlign: i === 4 ? 'right' : 'left',
                 }}>
-                  {esUSD ? '1.0000' : formatearMonto(tp, pais.codigo)}
-                </p>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-low)' }}>{pais.codigo}/USD</p>
-              </div>
+                  {h}
+                </div>
+              ))}
             </div>
-          )
-        })}
+            {/* Filas */}
+            {paisesFiltrados.map((pais, idx) => {
+              const tp = calcularTasaPublica(pais)
+              const esUSD = pais.codigo === 'USD'
+              return (
+                <div
+                  key={pais.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2.5rem 1fr 1fr 1fr 1fr',
+                    gap: '1rem',
+                    padding: '1rem 1.5rem',
+                    borderBottom: idx < paisesFiltrados.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                    transition: 'background 0.2s',
+                    alignItems: 'center',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ width: '2.5rem', height: '1.6rem', borderRadius: '0.3rem', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
+                    <img src={getFlagUrl(pais)} alt={pais.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 700, color: 'white', fontSize: '0.95rem' }}>{pais.nombre}</p>
+                  </div>
+                  <div style={{ color: 'var(--text-low)', fontSize: '0.875rem' }}>{pais.moneda}</div>
+                  <div>
+                    <span className="badge badge-success" style={{ fontFamily: 'monospace' }}>{pais.codigo}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontWeight: 800, color: esUSD ? 'var(--text-mid)' : 'var(--primary-color)', fontSize: '1.1rem', fontFamily: 'Manrope, sans-serif' }}>
+                      {esUSD ? '1.0000' : formatearMonto(tp, pais.codigo)}
+                    </p>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-low)' }}>{pais.codigo}/USD</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {paisesFiltrados.length === 0 && (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-low)' }}>

@@ -36,9 +36,13 @@ function PaisSelector({ label, paises, selected, onSelect }) {
     }
   }, [open, isMobile])
 
+  const normalize = str => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const searchNorm = normalize(search);
   const filtered = paises.filter(p =>
-    p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-    p.codigo.toLowerCase().includes(search.toLowerCase())
+    normalize(p.nombre).includes(searchNorm) ||
+    (p.codigo || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.iso2 || '').toLowerCase().includes(search.toLowerCase()) ||
+    normalize(p.moneda || '').includes(searchNorm)
   )
 
   const renderList = () => (

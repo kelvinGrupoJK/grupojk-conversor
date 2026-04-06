@@ -249,17 +249,17 @@ export function obtenerTasasProcesadas(paisOrigen, paisDestino, paises, modo = '
       if (origDolar && !destDolar) {
         // ESCENARIO A: USD -> Moneda Local (Zelle -> Colombia)
         // Sumamos el margen de recibo del origen al margen de envío del destino
-        const mO = parseFloat(origen.margenRecibo) || 0;
-        const mD = parseFloat(destino.margenEnvio) || 0;
+        const mO = (modo === 'mayor' && parseFloat(origen.margenReciboMayor) > 0) ? parseFloat(origen.margenReciboMayor) : (parseFloat(origen.margenRecibo) || 0);
+        const mD = (modo === 'mayor' && parseFloat(destino.margenEnvioMayor) > 0) ? parseFloat(destino.margenEnvioMayor) : (parseFloat(destino.margenEnvio) || 0);
         tasaOrigenParaDolares = 1;
         const tBaseD = parseFloat(destino.tasaProveedorEnvio !== undefined ? destino.tasaProveedorEnvio : (destino.tasaProveedor || 0));
         tasaDestinoDesdeDolares = tBaseD * (1 - (mO + mD) / 100);
       } else if (origDolar && destDolar) {
-        // ESCENARIO B: USD -> USD (E.g. Zelle -> Panamá)
+        // ESCENARIO B: USD -> USD (E.g. Zelle -> Panamá, Ecuador -> Efectivo Venezuela)
         // Solo cuenta la tasa/margen envío del país destino
         tasaOrigenParaDolares = 1;
         const tBaseD = parseFloat(destino.tasaProveedorEnvio !== undefined ? destino.tasaProveedorEnvio : (destino.tasaProveedor || 0));
-        const mD = parseFloat(destino.margenEnvio) || 0;
+        const mD = (modo === 'mayor' && parseFloat(destino.margenEnvioMayor) > 0) ? parseFloat(destino.margenEnvioMayor) : (parseFloat(destino.margenEnvio) || 0);
         tasaDestinoDesdeDolares = tBaseD * (1 - mD / 100);
       } else if (!origDolar && destDolar) {
         // Caso inverso (Local -> USD)

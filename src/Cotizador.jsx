@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl, isCustomFlag, isEfectivoVenSubEntry, agruparEfectivoVenezuela, getPaisesParaSelector } from './constants'
 
 // Componente interno para selector de países con buscador responsivo
@@ -8,6 +8,7 @@ function PaisSelector({ label, paises, selected, onSelect }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
   const [visibleHeight, setVisibleHeight] = useState(window.innerHeight)
+  const containerRef = useRef(null)
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 600)
@@ -118,10 +119,11 @@ function PaisSelector({ label, paises, selected, onSelect }) {
 
       {open && (
         <>
+          {/* Overlay para cerrar al hacer clic fuera (móvil y desktop) */}
           <div 
             className="mobile-overlay" 
             onClick={() => { setOpen(false); setSearch(''); }} 
-            style={{ display: isMobile ? 'block' : 'none' }}
+            style={{ display: isMobile ? 'block' : 'block', position: 'fixed', inset: 0, zIndex: isMobile ? undefined : 999, background: isMobile ? undefined : 'transparent' }}
           />
           
           <div 
@@ -182,8 +184,8 @@ export default function Cotizador({ modo = 'detal' }) {
   const [paisesSelector, setPaisesSelector] = useState([])
   const [origen, setOrigen] = useState(null)
   const [destino, setDestino] = useState(null)
-  const [monto, setMonto] = useState(100)
-  const [montoRecibir, setMontoRecibir] = useState(0)
+  const [monto, setMonto] = useState('')
+  const [montoRecibir, setMontoRecibir] = useState('')
   const [tasaDisplay, setTasaDisplay] = useState({ base: '', valor: 0, unidad: '' })
   const [lastEdited, setLastEdited] = useState('enviar') // 'enviar' | 'recibir'
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
@@ -256,14 +258,14 @@ export default function Cotizador({ modo = 'detal' }) {
       }
 
       // Solo recalcular el campo CONTRARIO al que editó el usuario
-      if (lastEdited === 'enviar' && monto >= 0) {
-        if (isDisp) {
+      if (lastEdited === 'enviar' && monto !== '' && monto >= 0) {
+        if (isDisp && monto > 0) {
           const res = calcularConversion(origen, destino, monto, paises, modo)
           setMontoRecibir(Math.round((res + Number.EPSILON) * 100) / 100)
-        } else {
+        } else if (monto === 0) {
           setMontoRecibir(0)
         }
-      } else if (lastEdited === 'recibir' && montoRecibir > 0) {
+      } else if (lastEdited === 'recibir' && montoRecibir !== '' && montoRecibir > 0) {
         if (isDisp) {
           const nuevoMonto = calcularConversionInversa(origen, destino, montoRecibir, paises, modo)
           const esCruceDolar = isCajaDolar(origen) && isCajaDolar(destino)
@@ -276,15 +278,23 @@ export default function Cotizador({ modo = 'detal' }) {
   }, [origen, destino, paises, monto, montoRecibir, lastEdited, modo])
 
   const handleMontoEnviarChange = (valStr) => {
-    const val = valStr === '' ? 0 : parseFloat(valStr)
     setLastEdited('enviar')
-    setMonto(val)
+    if (valStr === '') {
+      setMonto('')
+      setMontoRecibir('')
+      return
+    }
+    setMonto(parseFloat(valStr))
   }
 
   const handleMontoRecibirChange = (valStr) => {
-    const val = valStr === '' ? 0 : parseFloat(valStr)
     setLastEdited('recibir')
-    setMontoRecibir(val)
+    if (valStr === '') {
+      setMontoRecibir('')
+      setMonto('')
+      return
+    }
+    setMontoRecibir(parseFloat(valStr))
   }
 
   const handleOrigen = (id) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl, isCustomFlag } from './constants'
+import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl, isCustomFlag, isEfectivoVenSubEntry, agruparEfectivoVenezuela, getPaisesParaSelector } from './constants'
 
 // Componente interno para selector de países con buscador responsivo
 function PaisSelector({ label, paises, selected, onSelect }) {
@@ -177,8 +177,9 @@ function PaisSelector({ label, paises, selected, onSelect }) {
   )
 }
 
-export default function Cotizador() {
+export default function Cotizador({ modo = 'detal' }) {
   const [paises, setPaises] = useState([])
+  const [paisesSelector, setPaisesSelector] = useState([])
   const [origen, setOrigen] = useState(null)
   const [destino, setDestino] = useState(null)
   const [monto, setMonto] = useState(100)
@@ -187,6 +188,14 @@ export default function Cotizador() {
   const [lastEdited, setLastEdited] = useState('enviar') // 'enviar' | 'recibir'
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
   const [errorDismissed, setErrorDismissed] = useState(false)
+  const [efectivoVenNoticeDismissed, setEfectivoVenNoticeDismissed] = useState(false)
+  // Sub-menú Efectivo Venezuela
+  const [showEVMenu, setShowEVMenu] = useState(false)
+  const [evGrupos, setEvGrupos] = useState([])
+  const [evEstadoSeleccionado, setEvEstadoSeleccionado] = useState(null)
+
+  const esMayor = modo === 'mayor'
+  const isEfectivoVen = (p) => p?.nombre?.toUpperCase().includes('EFECTIVO VENEZUELA') || p?.nombre?.toUpperCase().includes('EFECTIVO VEN');
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 600)
@@ -195,8 +204,16 @@ export default function Cotizador() {
   }, [])
 
   useEffect(() => {
+    if (destino && isEfectivoVen(destino)) {
+      setEfectivoVenNoticeDismissed(false);
+    }
+  }, [destino])
+
+  useEffect(() => {
     const todos = cargarPaises()
     setPaises(todos)
+    setPaisesSelector(getPaisesParaSelector(todos))
+    setEvGrupos(agruparEfectivoVenezuela(todos))
     
     // Buscar en memoria, sino usar valores por defecto (Ecuador -> Colombia)
     const savedOrigenId = localStorage.getItem('jk_last_origen')
@@ -226,11 +243,11 @@ export default function Cotizador() {
 
       // Actualizar tasa display (siempre)
       if (isDisp) {
-        const tc = calcularConversion(origen, destino, 1, paises)
+        const tc = calcularConversion(origen, destino, 1, paises, modo)
         if (isCajaDolar(origen) && !isCajaDolar(destino)) {
           setTasaDisplay({ base: `1 ${origen.codigo}`, valor: tc, unidad: destino.codigo })
         } else if (!isCajaDolar(origen) && isCajaDolar(destino)) {
-          const tcInverso = calcularConversionInversa(origen, destino, 1, paises)
+          const tcInverso = calcularConversionInversa(origen, destino, 1, paises, modo)
           setTasaDisplay({ base: `1 ${destino.codigo}`, valor: tcInverso, unidad: origen.codigo })
         } else {
           setTasaDisplay({ base: `1 ${origen.codigo}`, valor: tc, unidad: destino.codigo })
@@ -240,14 +257,14 @@ export default function Cotizador() {
       // Solo recalcular el campo CONTRARIO al que editó el usuario
       if (lastEdited === 'enviar' && monto >= 0) {
         if (isDisp) {
-          const res = calcularConversion(origen, destino, monto, paises)
+          const res = calcularConversion(origen, destino, monto, paises, modo)
           setMontoRecibir(Math.round((res + Number.EPSILON) * 100) / 100)
         } else {
           setMontoRecibir(0)
         }
       } else if (lastEdited === 'recibir' && montoRecibir > 0) {
         if (isDisp) {
-          const nuevoMonto = calcularConversionInversa(origen, destino, montoRecibir, paises)
+          const nuevoMonto = calcularConversionInversa(origen, destino, montoRecibir, paises, modo)
           const esCruceDolar = isCajaDolar(origen) && isCajaDolar(destino)
           setMonto(esCruceDolar ? Math.ceil(nuevoMonto) : Math.round((nuevoMonto + Number.EPSILON) * 100) / 100)
         } else {
@@ -255,7 +272,7 @@ export default function Cotizador() {
         }
       }
     }
-  }, [origen, destino, paises, monto, montoRecibir, lastEdited])
+  }, [origen, destino, paises, monto, montoRecibir, lastEdited, modo])
 
   const handleMontoEnviarChange = (valStr) => {
     const val = valStr === '' ? 0 : parseFloat(valStr)
@@ -284,7 +301,13 @@ export default function Cotizador() {
   }
 
   const handleDestino = (id) => {
-    const p = paises.find(p => p.id === parseInt(id))
+    // Si es el placeholder de Efectivo Venezuela, abrir sub-menú
+    if (id === 'ev-placeholder') {
+      setShowEVMenu(true)
+      setEvEstadoSeleccionado(null)
+      return
+    }
+    const p = paises.find(p => p.id === parseInt(id)) || paisesSelector.find(p => p.id === id)
     setDestino(p)
     if (p) localStorage.setItem('jk_last_destino', p.id)
 
@@ -294,6 +317,15 @@ export default function Cotizador() {
       setOrigen(null)
       localStorage.removeItem('jk_last_origen')
     }
+  }
+
+  // Handler para selección final de Efectivo Venezuela
+  const handleEVSelect = (paisEV) => {
+    setDestino(paisEV)
+    localStorage.setItem('jk_last_destino', paisEV.id)
+    setShowEVMenu(false)
+    setEvEstadoSeleccionado(null)
+    setErrorDismissed(false)
   }
 
   const intercambiar = () => {
@@ -345,7 +377,7 @@ export default function Cotizador() {
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem 1.5rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', marginBottom: '0.5rem' }}>
-          💱 Cotizador de Divisas
+          💱 Cotizador de Divisas{esMayor ? ' Mayor' : ''}
         </h2>
         <p style={{ color: 'var(--text-low)' }}>
           Ingresa el monto y selecciona los países para calcular tu cambio al instante
@@ -366,7 +398,7 @@ export default function Cotizador() {
           {/* Origen */}
           <PaisSelector 
             label="País de Origen"
-            paises={paises}
+            paises={paisesSelector}
             selected={origen}
             onSelect={handleOrigen}
           />
@@ -397,7 +429,7 @@ export default function Cotizador() {
           {/* Destino */}
           <PaisSelector 
             label="País de Destino"
-            paises={paises}
+            paises={paisesSelector}
             selected={destino}
             onSelect={handleDestino}
           />
@@ -410,7 +442,16 @@ export default function Cotizador() {
             <label style={{ display: 'block', fontSize: '0.75rem', letterSpacing: '0.1em', color: 'var(--text-low)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>
               Monto a Enviar
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', borderRadius: '0.85rem', overflow: 'hidden', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.04)', opacity: isDisponible ? 1 : 0.5 }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              borderRadius: '0.85rem', 
+              overflow: 'hidden', 
+              border: '1px solid var(--glass-border)', 
+              background: 'rgba(255,255,255,0.04)', 
+              opacity: (isDisponible && !isEfectivoVen(destino)) ? 1 : 0.5,
+              position: 'relative'
+            }}>
               {origen && (
                 <span style={{ padding: '0 0.9rem', borderRight: '1px solid var(--glass-border)', color: 'var(--primary-color)', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {origen.codigo}
@@ -420,10 +461,14 @@ export default function Cotizador() {
                 type="number"
                 value={monto || ''}
                 min="0"
-                disabled={!isDisponible}
+                disabled={!isDisponible || isEfectivoVen(destino)}
                 onChange={e => handleMontoEnviarChange(e.target.value)}
+                placeholder={isEfectivoVen(destino) ? "Bloqueado" : ""}
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '1rem', fontSize: isMobile ? '1.3rem' : '1.5rem', fontWeight: 700, color: 'white', width: '100%' }}
               />
+              {isEfectivoVen(destino) && (
+                <span style={{ position: 'absolute', right: '1rem', bottom: '0.3rem', fontSize: '0.6rem', color: 'var(--text-low)', textTransform: 'uppercase' }}>Ingresa en Recibir →</span>
+              )}
             </div>
           </div>
 
@@ -432,9 +477,9 @@ export default function Cotizador() {
             <label style={{ display: 'block', fontSize: '0.75rem', letterSpacing: '0.1em', color: 'var(--text-low)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>
               Monto a Recibir
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', borderRadius: '0.85rem', overflow: 'hidden', border: '1px solid rgba(255, 113, 108, 0.35)', background: 'rgba(255,255,255,0.04)', opacity: isDisponible ? 1 : 0.5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', borderRadius: '0.85rem', overflow: 'hidden', border: isEfectivoVen(destino) ? '1px solid var(--primary-color)' : '1px solid rgba(255, 113, 108, 0.35)', background: 'rgba(255,255,255,0.04)', opacity: isDisponible ? 1 : 0.5 }}>
               {destino && (
-                <span style={{ padding: '0 0.9rem', borderRight: '1px solid rgba(255,113,108,0.3)', color: 'var(--error-color)', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ padding: '0 0.9rem', borderRight: isEfectivoVen(destino) ? '1px solid var(--primary-color)' : '1px solid rgba(255,113,108,0.3)', color: isEfectivoVen(destino) ? 'var(--primary-color)' : 'var(--error-color)', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {destino.codigo}
                 </span>
               )}
@@ -547,6 +592,59 @@ export default function Cotizador() {
           </div>
         )}
 
+        {/* MODAL DE AVISO EFECTIVO VENEZUELA */}
+        {origen && destino && isEfectivoVen(destino) && !efectivoVenNoticeDismissed && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 99999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1.5rem',
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+            onClick={() => setEfectivoVenNoticeDismissed(true)}
+          >
+            <div 
+              style={{
+                background: 'var(--surface-high)',
+                border: '1px solid var(--primary-color)',
+                borderRadius: '1.5rem',
+                padding: '2.5rem 2rem',
+                maxWidth: '430px',
+                width: '100%',
+                textAlign: 'center',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                animation: 'slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💵</div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary-color)', marginBottom: '1.5rem', lineHeight: 1.2 }}>
+                Aviso: Efectivo Venezuela
+              </h3>
+              <p style={{ color: 'white', fontSize: '1rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+                Para <strong>Efectivo Venezuela</strong>, debes colocar el monto en <strong>Monto a recibir</strong> solo múltiplos de 10 (ej: 200, 210, 220...). El sistema calculará cuánto debes pagar automáticamente.
+              </p>
+              
+              <button 
+                onClick={() => setEfectivoVenNoticeDismissed(true)}
+                style={{
+                  width: '100%', padding: '1.2rem', borderRadius: '1rem', border: 'none', background: 'var(--primary-color)', color: 'var(--bg-main)', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', transition: 'transform 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                ¡ENTENDIDO!
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* TASA APLICADA DESTACADA EN EL MEDIO */}
         {origen && destino && isDisponible && (
           <div style={{ textAlign: 'center', marginTop: '-1rem', marginBottom: '2.5rem' }}>
@@ -564,6 +662,29 @@ export default function Cotizador() {
               <div style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', fontWeight: 900, color: 'var(--primary-color)', fontFamily: 'Manrope, sans-serif' }}>
                  {tasaDisplay.base} = {formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} <span style={{ fontSize: '0.6em', color: 'var(--secondary-color)' }}>{tasaDisplay.unidad}</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* BANNER ESPECÍFICO PARA EFECTIVO VENEZUELA */}
+        {origen && destino && isDisponible && isEfectivoVen(destino) && (
+          <div style={{
+            background: 'rgba(16,185,129,0.1)',
+            border: '1px solid var(--primary-color)',
+            borderRadius: '1rem',
+            padding: '1.2rem 1.5rem',
+            marginBottom: '2rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            animation: 'fadeIn 0.4s'
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>💡</span>
+            <div>
+              <p style={{ color: 'var(--primary-color)', fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.2rem' }}>Instrucción de Entrega</p>
+              <p style={{ color: 'var(--text-mid)', fontSize: '0.85rem' }}>
+                Ingrese en <strong>Monto a recibir</strong> valores múltiplos de 10 (ej: 100, 110, 150...). El campo de envío está bloqueado para evitar errores.
+              </p>
             </div>
           </div>
         )}
@@ -653,9 +774,172 @@ export default function Cotizador() {
           </>
         )}
         <p style={{ fontSize: '0.85rem', color: 'var(--text-low)', lineHeight: 1.6 }}>
-          Las tasas de cambio se actualizan en tiempo real para ofrecerte el mejor valor del mercado. GRUPO JK garantiza la seguridad y rapidez en cada una de tus operaciones. Los montos calculados ya incluyen todos los diferenciales de cambio aplicables.
+          Las tasas de cambio se actualizan en tiempo real para ofrecerte el mejor valor del mercado. {esMayor ? 'Grupo JK Mayor' : 'CAMBIOS JK'} garantiza la seguridad y rapidez en cada una de tus operaciones. Los montos calculados ya incluyen todos los diferenciales de cambio aplicables.
         </p>
       </div>
+
+      {/* Modal sub-menú Efectivo Venezuela */}
+      {showEVMenu && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 5000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '1rem',
+        }} onClick={() => { setShowEVMenu(false); setEvEstadoSeleccionado(null); }}>
+          <div 
+            className="glass" 
+            style={{ 
+              maxWidth: '480px', width: '100%', padding: '2rem', 
+              maxHeight: '80vh', overflowY: 'auto',
+              animation: 'fadeIn 0.3s ease'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <p style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🇻🇪</p>
+              <h3 style={{ fontSize: '1.3rem', color: 'white', marginBottom: '0.3rem' }}>
+                {evEstadoSeleccionado ? `${evEstadoSeleccionado.estado}` : 'Efectivo Venezuela'}
+              </h3>
+              <p style={{ color: 'var(--text-low)', fontSize: '0.85rem' }}>
+                {evEstadoSeleccionado ? 'Selecciona la ciudad' : 'Selecciona el estado donde recibes'}
+              </p>
+            </div>
+
+            {/* Botón Volver (cuando hay estado seleccionado) */}
+            {evEstadoSeleccionado && (
+              <button
+                onClick={() => setEvEstadoSeleccionado(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '0.75rem',
+                  color: 'var(--text-low)',
+                  padding: '0.5rem 1rem',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  marginBottom: '1rem',
+                  display: 'flex', alignItems: 'center', gap: '0.3rem'
+                }}
+              >
+                ← Volver a estados
+              </button>
+            )}
+
+            {/* Lista de Estados */}
+            {!evEstadoSeleccionado && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {evGrupos.map(grupo => (
+                  <button
+                    key={grupo.estado}
+                    onClick={() => {
+                      // Si el estado tiene una sola entrada sin ciudad, seleccionar directo
+                      if (grupo.entries.length === 1 && !grupo.entries[0].ciudad) {
+                        handleEVSelect(grupo.entries[0].pais)
+                      } else {
+                        setEvEstadoSeleccionado(grupo)
+                      }
+                    }}
+                    style={{
+                      background: 'var(--surface-color)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: '1rem',
+                      padding: '1rem 1.2rem',
+                      color: 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                    onMouseEnter={e => {
+                      e.target.style.borderColor = 'var(--primary-color)'
+                      e.target.style.background = 'var(--surface-high)'
+                    }}
+                    onMouseLeave={e => {
+                      e.target.style.borderColor = 'var(--glass-border)'
+                      e.target.style.background = 'var(--surface-color)'
+                    }}
+                  >
+                    <span>📍 {grupo.estado}</span>
+                    {grupo.entries.length > 1 || grupo.entries[0].ciudad ? (
+                      <span style={{ color: 'var(--text-low)', fontSize: '0.8rem' }}>
+                        {grupo.entries.length} {grupo.entries.length === 1 ? 'ciudad' : 'ciudades'} →
+                      </span>
+                    ) : grupo.ciudadesTexto ? (
+                      <span style={{ color: 'var(--text-low)', fontSize: '0.75rem', maxWidth: '50%', textAlign: 'right' }}>
+                        {grupo.ciudadesTexto}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Lista de Ciudades del estado seleccionado */}
+            {evEstadoSeleccionado && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {evEstadoSeleccionado.entries.map((entry, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleEVSelect(entry.pais)}
+                    style={{
+                      background: 'var(--surface-color)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: '1rem',
+                      padding: '1rem 1.2rem',
+                      color: 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.target.style.borderColor = 'var(--primary-color)'
+                      e.target.style.background = 'var(--surface-high)'
+                    }}
+                    onMouseLeave={e => {
+                      e.target.style.borderColor = 'var(--glass-border)'
+                      e.target.style.background = 'var(--surface-color)'
+                    }}
+                  >
+                    🏙️ {entry.ciudad || evEstadoSeleccionado.estado}
+                    {entry.pais.ciudades && (
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-low)', fontWeight: 400, marginTop: '0.2rem' }}>
+                        Disponible en: {entry.pais.ciudades}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Botón cerrar */}
+            <button
+              onClick={() => { setShowEVMenu(false); setEvEstadoSeleccionado(null); }}
+              style={{
+                marginTop: '1.5rem',
+                width: '100%',
+                padding: '0.8rem',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '1rem',
+                color: 'var(--text-low)',
+                cursor: 'pointer',
+                fontSize: '0.9rem'
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -6,11 +6,69 @@ import ListaPaises from './ListaPaises'
 import AdminPanel from './AdminPanel'
 import LoginAdmin from './LoginAdmin'
 
+const CLAVE_MAYOR = '1234jk'
+
+function LoginMayor({ onLogin }) {
+  const [clave, setClave] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (clave === CLAVE_MAYOR) {
+      sessionStorage.setItem('jk_mayor_auth', 'true')
+      onLogin()
+    } else {
+      setError('Clave incorrecta. Intente de nuevo.')
+      setClave('')
+    }
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-color)', padding: '2rem' }}>
+      <div className="glass" style={{ maxWidth: '420px', width: '100%', padding: '3rem 2.5rem', textAlign: 'center' }}>
+        <div style={{ width: '5rem', height: '5rem', margin: '0 auto 1.5rem', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <img src="./logo-jk-transparente.png" alt="Logo JK" style={{ width: '130%', height: '130%', objectFit: 'contain' }} />
+        </div>
+        <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', color: 'white' }}>Grupo JK Mayor</h2>
+        <p style={{ color: 'var(--text-low)', fontSize: '0.9rem', marginBottom: '2rem' }}>Acceso exclusivo para remesistas y cambistas</p>
+
+        <form onSubmit={handleSubmit}>
+          <input
+            type="password"
+            value={clave}
+            onChange={e => { setClave(e.target.value); setError(''); }}
+            placeholder="Ingrese la clave de acceso"
+            className="input-field"
+            style={{ marginBottom: '1rem', textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.15em' }}
+            autoFocus
+          />
+          {error && (
+            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
+              ❌ {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            className="btn-primary"
+            style={{ width: '100%', fontSize: '1.1rem', padding: '1.1rem' }}
+          >
+            🔓 Ingresar
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [ruta, setRuta] = useState('inicio')
   const [auth, setAuth] = useState(false)
+  const [mayorAuth, setMayorAuth] = useState(false)
   const [sheetsReady, setSheetsReady] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+
+  // Detectar modo a partir de la ruta
+  const modoMayor = ruta.startsWith('mayor')
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 600)
@@ -23,12 +81,13 @@ function App() {
     const isAuth = sessionStorage.getItem('jk_admin_auth')
     if (isAuth) setAuth(true)
 
+    const isMayorAuth = sessionStorage.getItem('jk_mayor_auth')
+    if (isMayorAuth) setMayorAuth(true)
+
     sincronizarGoogleSheets().finally(() => {
         setSheetsReady(true)
     })
   }, [])
-
-
 
   // Enrutamiento básico con hash
   useEffect(() => {
@@ -58,6 +117,20 @@ function App() {
     navegar('inicio')
   }
 
+  const handleMayorLogin = () => {
+    setMayorAuth(true)
+    navegar('mayor-inicio')
+  }
+
+  const handleMayorLogout = () => {
+    sessionStorage.removeItem('jk_mayor_auth')
+    setMayorAuth(false)
+    navegar('inicio')
+  }
+
+  // Branding dinámico
+  const brandName = modoMayor ? 'Grupo JK Mayor' : 'CAMBIOS JK'
+
   if (!sheetsReady) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)', color: 'white', flexDirection: 'column', gap: '1rem' }}>
@@ -69,11 +142,29 @@ function App() {
     )
   }
 
+  // Si intenta acceder a rutas mayor sin estar autenticado → login
+  if (modoMayor && !mayorAuth && ruta !== 'mayor') {
+    // Redirigir a login mayor
+    window.location.hash = '#/mayor'
+    return <LoginMayor onLogin={handleMayorLogin} />
+  }
+
+  // Ruta exacta "mayor" = login
+  if (ruta === 'mayor' && !mayorAuth) {
+    return <LoginMayor onLogin={handleMayorLogin} />
+  }
+  if (ruta === 'mayor' && mayorAuth) {
+    navegar('mayor-inicio')
+  }
+
+  // Determinar si mostrar navbar público
+  const isAdminRoute = ruta === 'admin-jk' || ruta === 'admin'
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Navbar Público */}
-      {(ruta !== 'admin-jk' && ruta !== 'admin') && (
+      {/* Navbar */}
+      {!isAdminRoute && (
         <nav style={{
           height: 'var(--header-height)',
           display: 'flex',
@@ -89,28 +180,46 @@ function App() {
         }}>
           <div 
             style={{ fontSize: isMobile ? '1.1rem' : '1.5rem', fontWeight: 800, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            onClick={() => navegar('inicio')}
+            onClick={() => navegar(modoMayor ? 'mayor-inicio' : 'inicio')}
           >
             <div style={{ width: isMobile ? '2rem' : '2.6rem', height: isMobile ? '2rem' : '2.6rem', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0.15rem' }}>
               <img src="./logo-jk-transparente.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
-            <span>GRUPO JK</span>
+            <span>{brandName}</span>
           </div>
           
           <div style={{ display: 'flex', gap: isMobile ? '0.6rem' : '2rem', alignItems: 'center' }}>
-            <button onClick={() => navegar('inicio')} className={`nav-link ${ruta === 'inicio' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Inicio</button>
-            <button onClick={() => navegar('cotizador')} className={`nav-link ${ruta === 'cotizador' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Cotizador</button>
-            <button onClick={() => navegar('tasas')} className={`nav-link ${ruta === 'tasas' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Tasas' : 'Lista de Tasas'}</button>
+            {modoMayor ? (
+              <>
+                <button onClick={() => navegar('mayor-inicio')} className={`nav-link ${ruta === 'mayor-inicio' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Inicio</button>
+                <button onClick={() => navegar('mayor-cotizador')} className={`nav-link ${ruta === 'mayor-cotizador' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Cotizador</button>
+                <button onClick={() => navegar('mayor-tasas')} className={`nav-link ${ruta === 'mayor-tasas' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Tasas' : 'Lista de Tasas'}</button>
+                <button onClick={handleMayorLogout} style={{ background: 'none', border: '1px solid var(--error-color)', borderRadius: '0.6rem', color: 'var(--error-color)', fontSize: '0.75rem', padding: '0.3rem 0.6rem', cursor: 'pointer', fontWeight: 700 }}>Salir</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => navegar('inicio')} className={`nav-link ${ruta === 'inicio' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Inicio</button>
+                <button onClick={() => navegar('cotizador')} className={`nav-link ${ruta === 'cotizador' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Cotizador</button>
+                <button onClick={() => navegar('tasas')} className={`nav-link ${ruta === 'tasas' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Tasas' : 'Lista de Tasas'}</button>
+              </>
+            )}
           </div>
         </nav>
       )}
 
       {/* Main Content */}
       <main style={{ flex: 1 }}>
-        {ruta === 'inicio' && <Dashboard onNavegar={navegar} />}
-        {ruta === 'cotizador' && <Cotizador />}
-        {ruta === 'tasas' && <ListaPaises />}
+        {/* DETAL */}
+        {ruta === 'inicio' && <Dashboard onNavegar={navegar} modo="detal" />}
+        {ruta === 'cotizador' && <Cotizador modo="detal" />}
+        {ruta === 'tasas' && <ListaPaises modo="detal" />}
         
+        {/* MAYOR */}
+        {ruta === 'mayor-inicio' && mayorAuth && <Dashboard onNavegar={navegar} modo="mayor" />}
+        {ruta === 'mayor-cotizador' && mayorAuth && <Cotizador modo="mayor" />}
+        {ruta === 'mayor-tasas' && mayorAuth && <ListaPaises modo="mayor" />}
+
+        {/* ADMIN */}
         {ruta === 'admin-jk' && (
           !auth ? <LoginAdmin onLogin={handleLogin} /> : <AdminPanel onLogout={handleLogout} />
         )}
@@ -120,8 +229,8 @@ function App() {
         )}
       </main>
 
-      {/* Footer Público */}
-      {(ruta !== 'admin-jk' && ruta !== 'admin') && (
+      {/* Footer */}
+      {!isAdminRoute && (
         <footer style={{
           textAlign: 'center',
           padding: '2rem',
@@ -129,7 +238,7 @@ function App() {
           color: 'var(--text-low)',
           fontSize: '0.85rem'
         }}>
-          <p>© {new Date().getFullYear()} GRUPO JK. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} {brandName}. Todos los derechos reservados.</p>
           <p style={{ marginTop: '0.5rem' }}>
             <span style={{ cursor: 'pointer', opacity: 0.3 }} onDoubleClick={() => navegar('admin-jk')}>⚡</span>
           </p>

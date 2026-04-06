@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { cargarPaises, PAISES_DESTACADOS_IDS, calcularTasaPublica, formatearMonto, getFlagUrl } from './constants'
 
-export default function Dashboard({ onNavegar }) {
+export default function Dashboard({ onNavegar, modo = 'detal' }) {
   const [paises, setPaises] = useState([])
   const [destacados, setDestacados] = useState([])
 
@@ -14,8 +14,10 @@ export default function Dashboard({ onNavegar }) {
     setDestacados(dest)
   }, [])
 
+  const esMayor = modo === 'mayor'
+
   const tasaDisplay = (pais) => {
-    const tp = calcularTasaPublica(pais)
+    const tp = calcularTasaPublica(pais, modo)
     if (pais.codigo === 'USD') return '1.00'
     return formatearMonto(tp, pais.codigo)
   }
@@ -49,7 +51,7 @@ export default function Dashboard({ onNavegar }) {
           <img src="./logo-jk-transparente.png" alt="Logo JK" style={{ width: '150%', height: '150%', objectFit: 'contain' }} />
         </div>
         <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', marginBottom: '1rem', color: 'white' }}>
-          GRUPO JK
+          {esMayor ? 'Grupo JK Mayor' : 'CAMBIOS JK'}
         </h1>
         <p style={{ fontSize: '1.2rem', color: 'var(--text-low)', marginBottom: '0.5rem' }}>
           Cambio de Divisas — Tasas en Tiempo Real
@@ -59,10 +61,10 @@ export default function Dashboard({ onNavegar }) {
         </p>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="btn-primary" style={{ fontSize: '1.1rem', padding: '1rem 2.5rem' }}
-            onClick={() => onNavegar('cotizador')}>
+            onClick={() => onNavegar(esMayor ? 'mayor-cotizador' : 'cotizador')}>
             💱 Hacer una Cotización
           </button>
-          <button onClick={() => onNavegar('tasas')}
+          <button onClick={() => onNavegar(esMayor ? 'mayor-tasas' : 'tasas')}
             style={{
               background: 'transparent',
               border: '1px solid var(--primary-color)',
@@ -87,10 +89,10 @@ export default function Dashboard({ onNavegar }) {
         <div>
           <h2 style={{ fontSize: '1.8rem', marginBottom: '0.3rem' }}>Tasas del Día</h2>
           <p style={{ color: 'var(--text-low)', fontSize: '0.95rem' }}>
-            1 USD equivale a — Actualizado por GRUPO JK
+            1 USD equivale a — Actualizado por {esMayor ? 'Grupo JK Mayor' : 'CAMBIOS JK'}
           </p>
         </div>
-        <button onClick={() => onNavegar('tasas')}
+        <button onClick={() => onNavegar(esMayor ? 'mayor-tasas' : 'tasas')}
           style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}>
           Ver todas →
         </button>
@@ -106,7 +108,7 @@ export default function Dashboard({ onNavegar }) {
           <div key={pais.id}
             className="glass card"
             style={{ padding: '1.5rem', cursor: 'pointer', textAlign: 'center' }}
-            onClick={() => onNavegar('cotizador')}
+            onClick={() => onNavegar(esMayor ? 'mayor-cotizador' : 'cotizador')}
           >
             <div style={{ width: '4rem', height: '2.5rem', margin: '0 auto 1.2rem', overflow: 'hidden', borderRadius: '0.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               <img 

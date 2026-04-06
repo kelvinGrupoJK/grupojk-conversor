@@ -102,10 +102,11 @@ function GraficaBarras({ paises }) {
   )
 }
 
-export default function ListaPaises() {
+export default function ListaPaises({ modo = 'detal' }) {
   const [paises, setPaises] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const esMayor = modo === 'mayor'
 
   useEffect(() => {
     setPaises(cargarPaises())
@@ -128,7 +129,7 @@ export default function ListaPaises() {
 
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', marginBottom: '0.5rem' }}>
-          🌎 Tasas de Cambio
+          🌎 Tasas de Cambio{esMayor ? ' Mayor' : ''}
         </h2>
         <p style={{ color: 'var(--text-low)' }}>
           {paises.length} países disponibles · Tasa base: 1 USD
@@ -170,7 +171,7 @@ export default function ListaPaises() {
           // Vista de tarjetas para móvil y tablet
           <div>
             {paisesFiltrados.map((pais, idx) => {
-              const tp = calcularTasaPublica(pais)
+              const tp = calcularTasaPublica(pais, modo)
               const esUSD = pais.codigo === 'USD'
               return (
                 <div
@@ -231,7 +232,7 @@ export default function ListaPaises() {
             </div>
             {/* Filas */}
             {paisesFiltrados.map((pais, idx) => {
-              const tp = calcularTasaPublica(pais)
+              const tp = calcularTasaPublica(pais, modo)
               const esUSD = pais.codigo === 'USD'
               return (
                 <div

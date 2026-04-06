@@ -28,14 +28,19 @@ export const PAISES_DESTACADOS_IDS = [8, 10, 17, 7, 3, 19] // Colombia, Venezuel
  * Tasa de Envío (cuando el sistema vende USD y entrega esta moneda).
  * Se RESTA el margen al proveedor.
  */
-export function calcularTasaEnvio(pais) {
+export function calcularTasaEnvio(pais, modo = 'detal') {
   const rawProveedor = pais.tasaProveedorEnvio !== undefined ? pais.tasaProveedorEnvio : (pais.tasaProveedor || 0)
   const tProveedor = parseFloat(rawProveedor) || 0;
 
   if (tProveedor === 0) return 0
   if (pais.codigo === 'USD') return 1
 
-  const rawMargen = pais.margenEnvio !== undefined ? pais.margenEnvio : (pais.margen || 0)
+  let rawMargen;
+  if (modo === 'mayor' && pais.margenEnvioMayor !== undefined && parseFloat(pais.margenEnvioMayor) > 0) {
+    rawMargen = pais.margenEnvioMayor;
+  } else {
+    rawMargen = pais.margenEnvio !== undefined ? pais.margenEnvio : (pais.margen || 0);
+  }
   const margen = parseFloat(rawMargen) || 0;
   return tProveedor * (1 - margen / 100)
 }
@@ -44,14 +49,19 @@ export function calcularTasaEnvio(pais) {
  * Tasa de Recibo / Inversa (cuando el sistema recibe esta moneda y entrega USD).
  * Se SUMA el margen al proveedor.
  */
-export function calcularTasaRecibo(pais) {
+export function calcularTasaRecibo(pais, modo = 'detal') {
   const rawProveedor = pais.tasaProveedorRecibo !== undefined ? pais.tasaProveedorRecibo : (pais.tasaProveedor || 0)
   const tProveedor = parseFloat(rawProveedor) || 0;
 
   if (tProveedor === 0) return 0
   if (pais.codigo === 'USD') return 1
 
-  const rawMargen = pais.margenRecibo !== undefined ? pais.margenRecibo : (pais.margen || 0)
+  let rawMargen;
+  if (modo === 'mayor' && pais.margenReciboMayor !== undefined && parseFloat(pais.margenReciboMayor) > 0) {
+    rawMargen = pais.margenReciboMayor;
+  } else {
+    rawMargen = pais.margenRecibo !== undefined ? pais.margenRecibo : (pais.margen || 0);
+  }
   const margen = parseFloat(rawMargen) || 0;
   return tProveedor * (1 + margen / 100)
 }
@@ -59,8 +69,8 @@ export function calcularTasaRecibo(pais) {
 /**
  * Calculo normal para mostrar la "Tasa Pública" general (que suele ser la de envío)
  */
-export function calcularTasaPublica(pais) {
-  return calcularTasaEnvio(pais)
+export function calcularTasaPublica(pais, modo = 'detal') {
+  return calcularTasaEnvio(pais, modo)
 }
 
 export function isCajaDolar(p) {
@@ -105,14 +115,85 @@ export function isCustomFlag(pais) {
 }
 
 /**
+ * Detecta si un país es una sub-entrada de Efectivo Venezuela (con estado/ciudad).
+ */
+export function isEfectivoVenSubEntry(pais) {
+  if (!pais) return false;
+  const name = pais.nombre ? pais.nombre.toUpperCase() : '';
+  return (name.includes('EFECTIVO VENEZUELA-') || name.includes('EFECTIVO VENEZUELA -'));
+}
+
+/**
+ * Agrupa las entradas de Efectivo Venezuela por estado y ciudad.
+ * Retorna: [{ estado, ciudadesTexto, entries: [{ ciudad, pais }] }]
+ */
+export function agruparEfectivoVenezuela(paises) {
+  const entradas = paises.filter(p => isEfectivoVenSubEntry(p));
+  const grupos = {};
+
+  entradas.forEach(p => {
+    const name = p.nombre || '';
+    // Formato: "Efectivo Venezuela-Estado" o "Efectivo Venezuela-Estado-Ciudad"
+    const partes = name.split(/\s*-\s*/).map(s => s.trim());
+    // partes[0] = "Efectivo Venezuela", [1] = Estado, [2] = Ciudad (opcional)
+    const estado = partes[1] || 'Otro';
+    const ciudad = partes[2] || null;
+
+    if (!grupos[estado]) {
+      grupos[estado] = { estado, ciudadesTexto: p.ciudades || '', entries: [] };
+    }
+    grupos[estado].entries.push({ ciudad, pais: p });
+    if (p.ciudades && !grupos[estado].ciudadesTexto) {
+      grupos[estado].ciudadesTexto = p.ciudades;
+    }
+  });
+
+  return Object.values(grupos);
+}
+
+/**
+ * Retorna los países filtrados para el selector (oculta sub-entradas de EV).
+ */
+export function getPaisesParaSelector(paises) {
+  const tieneSubEntradas = paises.some(p => isEfectivoVenSubEntry(p));
+  if (!tieneSubEntradas) return paises;
+
+  // Filtrar sub-entradas de EV
+  const sinEV = paises.filter(p => !isEfectivoVenSubEntry(p));
+  // Solo agregar placeholder si no existe uno genérico
+  const yaExisteEV = sinEV.some(p => {
+    const n = (p.nombre || '').toUpperCase();
+    return n === 'EFECTIVO VENEZUELA';
+  });
+
+  if (!yaExisteEV) {
+    sinEV.push({
+      id: 'ev-placeholder',
+      nombre: 'Efectivo Venezuela',
+      iso2: 've',
+      bandera: '🇻🇪',
+      codigo: 'USD',
+      moneda: 'Dólar - Efectivo',
+      _isEVPlaceholder: true
+    });
+  } else {
+    // Marcar el existente como placeholder
+    const ev = sinEV.find(p => (p.nombre || '').toUpperCase() === 'EFECTIVO VENEZUELA');
+    if (ev) ev._isEVPlaceholder = true;
+  }
+
+  return sinEV;
+}
+
+/**
  * Cerebro maestro de Tasas para cruces limpios y factores dinámicos.
  */
-export function obtenerTasasProcesadas(paisOrigen, paisDestino, paises) {
+export function obtenerTasasProcesadas(paisOrigen, paisDestino, paises, modo = 'detal') {
   const origen = paises.find(p => p.id === paisOrigen.id) || paisOrigen
   const destino = paises.find(p => p.id === paisDestino.id) || paisDestino
 
-  let tasaOrigenParaDolares = calcularTasaRecibo(origen)
-  let tasaDestinoDesdeDolares = calcularTasaEnvio(destino)
+  let tasaOrigenParaDolares = calcularTasaRecibo(origen, modo)
+  let tasaDestinoDesdeDolares = calcularTasaEnvio(destino, modo)
 
   // LOGICA DE FACTORES ESPECIALES POR PAÍS (Factores base dinámicos aparte de USD)
   const BASES_ESPECIALES = ['EUR', 'USDT', 'GBP', 'EU']
@@ -195,8 +276,8 @@ export function obtenerTasasProcesadas(paisOrigen, paisDestino, paises) {
 /**
  * Calcula la conversión IDEAL hacia delante.
  */
-export function calcularConversion(paisOrigen, paisDestino, monto, paises) {
-  const { tasaOrigenParaDolares, tasaDestinoDesdeDolares } = obtenerTasasProcesadas(paisOrigen, paisDestino, paises)
+export function calcularConversion(paisOrigen, paisDestino, monto, paises, modo = 'detal') {
+  const { tasaOrigenParaDolares, tasaDestinoDesdeDolares } = obtenerTasasProcesadas(paisOrigen, paisDestino, paises, modo)
   const montoEnDolares = monto / tasaOrigenParaDolares
   return montoEnDolares * tasaDestinoDesdeDolares
 }
@@ -204,8 +285,8 @@ export function calcularConversion(paisOrigen, paisDestino, monto, paises) {
 /**
  * Calcula la conversión a la INVERSA (Cuanto necesito origen para que llegue exacto a destino)
  */
-export function calcularConversionInversa(paisOrigen, paisDestino, montoRecibir, paises) {
-  const { tasaOrigenParaDolares, tasaDestinoDesdeDolares } = obtenerTasasProcesadas(paisOrigen, paisDestino, paises)
+export function calcularConversionInversa(paisOrigen, paisDestino, montoRecibir, paises, modo = 'detal') {
+  const { tasaOrigenParaDolares, tasaDestinoDesdeDolares } = obtenerTasasProcesadas(paisOrigen, paisDestino, paises, modo)
   if (tasaDestinoDesdeDolares === 0) return 0;
   const montoEnDolares = montoRecibir / tasaDestinoDesdeDolares
   return montoEnDolares * tasaOrigenParaDolares
@@ -282,6 +363,9 @@ export async function sincronizarGoogleSheets() {
     const idxUSDT = headRow.findIndex(h => h.includes('FACTOR USDT') || h.includes('VALOR USDT'));
     const idxISO = headRow.findIndex(h => h.includes('ISO') || h.includes('BANDERA'));
     const idxCod = headRow.findIndex(h => h.includes('CÓDIGO') || h.includes('CODIGO') || h.includes('BANCO'));
+    const idxMargenEnvioMayor = headRow.findIndex(h => h.includes('MARGEN ENVIO MAYOR') || h.includes('MARGEN ENVÍO MAYOR'));
+    const idxMargenReciboMayor = headRow.findIndex(h => h.includes('MARGEN RECIBO MAYOR'));
+    const idxCiudades = headRow.findIndex(h => h.includes('CIUDADES'));
     const idxMon = headRow.findIndex(h => h.includes('NOMBRE') || h.includes('MONEDA'));
 
     // Empezamos desde la línea 1 (omitiendo cabeceras País, Tasa Envio, etc)
@@ -344,7 +428,10 @@ export async function sincronizarGoogleSheets() {
           tasaProveedorRecibo: tR,
           margenRecibo: mR,
           factorEUR: valFactorEUR || (base ? base.factorEUR || 0 : 0),
-          factorUSDT: valFactorUSDT || (base ? base.factorUSDT || 0 : 0)
+          factorUSDT: valFactorUSDT || (base ? base.factorUSDT || 0 : 0),
+          margenEnvioMayor: idxMargenEnvioMayor !== -1 && row.length > idxMargenEnvioMayor ? parseVal(row[idxMargenEnvioMayor]) : 0,
+          margenReciboMayor: idxMargenReciboMayor !== -1 && row.length > idxMargenReciboMayor ? parseVal(row[idxMargenReciboMayor]) : 0,
+          ciudades: idxCiudades !== -1 && row.length > idxCiudades && row[idxCiudades].trim() !== '' ? row[idxCiudades].trim() : ''
         });
       }
     }

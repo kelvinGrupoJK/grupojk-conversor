@@ -193,6 +193,7 @@ export default function Cotizador({ modo = 'detal' }) {
   const [showEVMenu, setShowEVMenu] = useState(false)
   const [evGrupos, setEvGrupos] = useState([])
   const [evEstadoSeleccionado, setEvEstadoSeleccionado] = useState(null)
+  const [evSelectTarget, setEvSelectTarget] = useState('destino') // 'origen' | 'destino'
 
   const esMayor = modo === 'mayor'
   const isEfectivoVen = (p) => p?.nombre?.toUpperCase().includes('EFECTIVO VENEZUELA') || p?.nombre?.toUpperCase().includes('EFECTIVO VEN');
@@ -287,9 +288,17 @@ export default function Cotizador({ modo = 'detal' }) {
   }
 
   const handleOrigen = (id) => {
-    const p = paises.find(p => p.id === parseInt(id))
+    // Si es el placeholder de Efectivo Venezuela, abrir sub-menú para ORIGEN
+    if (id === 'ev-placeholder') {
+      setEvSelectTarget('origen')
+      setShowEVMenu(true)
+      setEvEstadoSeleccionado(null)
+      return
+    }
+    const p = paises.find(p => p.id === parseInt(id)) || paisesSelector.find(p => p.id === id)
+    if (!p) return
     setOrigen(p)
-    if (p) localStorage.setItem('jk_last_origen', p.id)
+    localStorage.setItem('jk_last_origen', p.id)
     
     setErrorDismissed(false)
 
@@ -303,6 +312,7 @@ export default function Cotizador({ modo = 'detal' }) {
   const handleDestino = (id) => {
     // Si es el placeholder de Efectivo Venezuela, abrir sub-menú
     if (id === 'ev-placeholder') {
+      setEvSelectTarget('destino')
       setShowEVMenu(true)
       setEvEstadoSeleccionado(null)
       return
@@ -321,8 +331,13 @@ export default function Cotizador({ modo = 'detal' }) {
 
   // Handler para selección final de Efectivo Venezuela
   const handleEVSelect = (paisEV) => {
-    setDestino(paisEV)
-    localStorage.setItem('jk_last_destino', paisEV.id)
+    if (evSelectTarget === 'origen') {
+      setOrigen(paisEV)
+      localStorage.setItem('jk_last_origen', paisEV.id)
+    } else {
+      setDestino(paisEV)
+      localStorage.setItem('jk_last_destino', paisEV.id)
+    }
     setShowEVMenu(false)
     setEvEstadoSeleccionado(null)
     setErrorDismissed(false)

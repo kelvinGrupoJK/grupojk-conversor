@@ -184,10 +184,18 @@ export default function Cotizador({ modo = 'detal' }) {
   const [paisesSelector, setPaisesSelector] = useState([])
   const [origen, setOrigen] = useState(null)
   const [destino, setDestino] = useState(null)
-  const [monto, setMonto] = useState('')
-  const [montoRecibir, setMontoRecibir] = useState('')
+  const [monto, setMonto] = useState(() => {
+    const saved = localStorage.getItem('jk_last_monto')
+    return saved !== null && saved !== '' ? parseFloat(saved) : ''
+  })
+  const [montoRecibir, setMontoRecibir] = useState(() => {
+    const saved = localStorage.getItem('jk_last_montoRecibir')
+    return saved !== null && saved !== '' ? parseFloat(saved) : ''
+  })
   const [tasaDisplay, setTasaDisplay] = useState({ base: '', valor: 0, unidad: '' })
-  const [lastEdited, setLastEdited] = useState('enviar') // 'enviar' | 'recibir'
+  const [lastEdited, setLastEdited] = useState(() => {
+    return localStorage.getItem('jk_last_edited') || 'enviar'
+  })
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [efectivoVenNoticeDismissed, setEfectivoVenNoticeDismissed] = useState(false)
@@ -275,6 +283,13 @@ export default function Cotizador({ modo = 'detal' }) {
       }
     }
   }, [origen, destino, paises, monto, montoRecibir, lastEdited, modo])
+
+  // Guardar montos en localStorage para recordar la última cotización
+  useEffect(() => {
+    localStorage.setItem('jk_last_monto', monto !== '' ? monto : '')
+    localStorage.setItem('jk_last_montoRecibir', montoRecibir !== '' ? montoRecibir : '')
+    localStorage.setItem('jk_last_edited', lastEdited)
+  }, [monto, montoRecibir, lastEdited])
 
   const handleMontoEnviarChange = (valStr) => {
     setLastEdited('enviar')

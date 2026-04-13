@@ -317,6 +317,40 @@ export function formatearMonto(valor, codigo, maxDigits) {
 }
 
 /**
+ * Limpia y parsea un string con formato regional (1.234,56) a un float (1234.56)
+ */
+export function parsearMonto(valStr) {
+  if (!valStr && valStr !== 0) return 0;
+  if (typeof valStr === 'number') return valStr;
+  
+  // Eliminamos los puntos (miles) y cambiamos la coma por punto (decimal)
+  let s = valStr.toString().replace(/\./g, '');
+  s = s.replace(',', '.');
+  const res = parseFloat(s);
+  return isNaN(res) ? 0 : res;
+}
+
+/**
+ * Formatea un número o string numérico para mostrarlo en un input con puntos de miles
+ */
+export function formatearMontoInput(valor) {
+  if (valor === '' || valor === null || valor === undefined) return '';
+  
+  // Separamos parte entera de la decimal para no perder la coma mientras se escribe
+  const partes = valor.toString().replace(/\./g, '').split(',');
+  const entera = partes[0];
+  const decimal = partes.length > 1 ? ',' + partes[1] : '';
+
+  // Formatear la parte entera con puntos
+  const enteraNum = parseInt(entera);
+  if (isNaN(enteraNum)) return decimal ? '0' + decimal : '';
+  
+  const enteraFormateada = enteraNum.toLocaleString('de-DE'); // de-DE usa punto para miles
+  
+  return enteraFormateada + decimal;
+}
+
+/**
  * Carga los países desde localStorage o usa los valores por defecto.
  */
 export function cargarPaises() {

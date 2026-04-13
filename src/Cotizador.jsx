@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl, isCustomFlag, isEfectivoVenSubEntry, agruparEfectivoVenezuela, getPaisesParaSelector } from './constants'
+import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl, isCustomFlag, isEfectivoVenSubEntry, agruparEfectivoVenezuela, getPaisesParaSelector, parsearMonto, formatearMontoInput } from './constants'
 
 // Componente interno para selector de países con buscador responsivo
 function PaisSelector({ label, paises, selected, onSelect }) {
@@ -240,11 +240,13 @@ export default function Cotizador({ modo = 'detal' }) {
 
   useEffect(() => {
     if (origen && destino && paises.length > 0) {
-      const tOrigenRecibo = calcularTasaRecibo(origen)
-      const tDestinoEnvio = calcularTasaEnvio(destino)
+      const tOrigenRecibo = calcularTasaRecibo(origen, modo)
+      const tDestinoEnvio = calcularTasaEnvio(destino, modo)
       const isDisp = tOrigenRecibo > 0 && tDestinoEnvio > 0
 
-      // Actualizar tasa display (siempre)
+      const numMonto = parsearMonto(monto)
+      const numMontoRecibir = parsearMonto(montoRecibir)
+
       if (isDisp) {
         const tc = calcularConversion(origen, destino, 1, paises, modo)
         if (isCajaDolar(origen) && !isCajaDolar(destino)) {
@@ -257,20 +259,19 @@ export default function Cotizador({ modo = 'detal' }) {
         }
       }
 
-      // Solo recalcular el campo CONTRARIO al que editó el usuario
-      if (lastEdited === 'enviar' && monto !== '' && monto >= 0) {
-        if (isDisp && monto > 0) {
-          const res = calcularConversion(origen, destino, monto, paises, modo)
-          setMontoRecibir(Math.round((res + Number.EPSILON) * 100) / 100)
-        } else if (monto === 0) {
-          setMontoRecibir(0)
+      if (lastEdited === 'enviar' && monto !== '') {
+        if (isDisp && numMonto > 0) {
+          const res = calcularConversion(origen, destino, numMonto, paises, modo)
+          setMontoRecibir(formatearMontoInput(res.toFixed(2).replace('.', ',')))
+        } else if (numMonto === 0) {
+          setMontoRecibir('0')
         }
-      } else if (lastEdited === 'recibir' && montoRecibir !== '' && montoRecibir > 0) {
-        if (isDisp) {
-          const nuevoMonto = calcularConversionInversa(origen, destino, montoRecibir, paises, modo)
-          setMonto(Math.round((nuevoMonto + Number.EPSILON) * 100) / 100)
+      } else if (lastEdited === 'recibir' && montoRecibir !== '') {
+        if (isDisp && numMontoRecibir > 0) {
+          const nuevoMonto = calcularConversionInversa(origen, destino, numMontoRecibir, paises, modo)
+          setMonto(formatearMontoInput(nuevoMonto.toFixed(2).replace('.', ',')))
         } else {
-          setMonto(0)
+          setMonto('0')
         }
       }
     }
@@ -284,7 +285,11 @@ export default function Cotizador({ modo = 'detal' }) {
       setMontoRecibir('')
       return
     }
-    setMonto(parseFloat(valStr))
+    // Permitir solo números y comas (una sola)
+    let limpio = valStr.replace(/[^0-9,]/g, '')
+    if ((limpio.match(/,/g) || []).length > 1) return
+    
+    setMonto(formatearMontoInput(limpio))
   }
 
   const handleMontoRecibirChange = (valStr) => {
@@ -294,7 +299,10 @@ export default function Cotizador({ modo = 'detal' }) {
       setMonto('')
       return
     }
-    setMontoRecibir(parseFloat(valStr))
+    let limpio = valStr.replace(/[^0-9,]/g, '')
+    if ((limpio.match(/,/g) || []).length > 1) return
+
+    setMontoRecibir(formatearMontoInput(limpio))
   }
 
   const handleOrigen = (id) => {
@@ -392,8 +400,10 @@ export default function Cotizador({ modo = 'detal' }) {
     if (!origen || !destino || !monto) return ''
     const codOrigen = origen.codigo
     const codDestino = destino.codigo
-    const resFormateado = formatearMonto(montoRecibir, codDestino)
-    const montoEnvFormateado = formatearMonto(monto, codOrigen)
+    const numMonto = parsearMonto(monto)
+    const numMontoRecibir = parsearMonto(montoRecibir)
+    const resFormateado = formatearMonto(numMontoRecibir, codDestino)
+    const montoEnvFormateado = formatearMonto(numMonto, codOrigen)
     
     return `Estás enviando ${montoEnvFormateado} ${codOrigen} (${origen.nombre}) → ${resFormateado} ${codDestino} (${destino.nombre})`
   }
@@ -483,12 +493,11 @@ export default function Cotizador({ modo = 'detal' }) {
                 </span>
               )}
               <input
-                type="number"
+                type="text"
                 value={monto || ''}
-                min="0"
                 disabled={!isDisponible || isEfectivoVen(destino)}
                 onChange={e => handleMontoEnviarChange(e.target.value)}
-                placeholder={isEfectivoVen(destino) ? "Bloqueado" : ""}
+                placeholder={isEfectivoVen(destino) ? "Bloqueado" : "0"}
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '1rem', fontSize: isMobile ? '1.3rem' : '1.5rem', fontWeight: 700, color: 'white', width: '100%' }}
               />
               {isEfectivoVen(destino) && (
@@ -509,11 +518,11 @@ export default function Cotizador({ modo = 'detal' }) {
                 </span>
               )}
               <input
-                type="number"
+                type="text"
                 value={montoRecibir || ''}
-                min="0"
                 disabled={!isDisponible}
                 onChange={e => handleMontoRecibirChange(e.target.value)}
+                placeholder="0"
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '1rem', fontSize: isMobile ? '1.3rem' : '1.5rem', fontWeight: 700, color: 'white', width: '100%' }}
               />
             </div>
@@ -731,7 +740,7 @@ export default function Cotizador({ modo = 'detal' }) {
         )}
 
         {/* Resultado */}
-        {montoRecibir > 0 && origen && destino && isDisponible && (
+        {parsearMonto(montoRecibir) > 0 && origen && destino && isDisponible && (
           <div style={{
             background: 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,183,127,0.06) 100%)',
             border: '1px solid rgba(16,185,129,0.3)',
@@ -759,7 +768,7 @@ export default function Cotizador({ modo = 'detal' }) {
               fontFamily: 'Manrope, sans-serif',
               marginBottom: '0.5rem',
             }}>
-              {formatearMonto(montoRecibir, destino.codigo)} <span style={{ fontSize: '0.5em', color: 'var(--secondary-color)' }}>{destino.codigo}</span>
+              {formatearMonto(parsearMonto(montoRecibir), destino.codigo)} <span style={{ fontSize: '0.5em', color: 'var(--secondary-color)' }}>{destino.codigo}</span>
             </p>
 
 

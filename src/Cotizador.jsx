@@ -541,6 +541,8 @@ export default function Cotizador({ modo = 'detal' }) {
               />
             </div>
           </div>
+        </div>
+
         {/* Resumen de la operación y Pactar Cambio (Pegado al destino) */}
         {origen && destino && isDisponible && monto && (
           <div style={{

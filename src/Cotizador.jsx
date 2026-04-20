@@ -493,7 +493,12 @@ export default function Cotizador({ modo = 'detal' }) {
               className="swap-btn"
               title="Intercambiar países"
             >
-              {isMobile ? '⇅ Cambiar Dirección' : '⇄'}
+              {isMobile ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '2rem' }}>⇅</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Cambiar Dirección</span>
+                </span>
+              ) : '⇄'}
             </button>
           </div>
 

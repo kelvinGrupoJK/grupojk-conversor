@@ -793,10 +793,77 @@ export default function Cotizador({ modo = 'detal' }) {
               background: 'rgba(0,0,0,0.2)',
               borderRadius: '2rem',
               display: 'inline-block',
+              marginBottom: '2rem'
             }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-low)' }}>
                 ⚡ Transferencia estimada: <strong style={{ color: 'white' }}>15 - 30 minutos</strong> · 💲 <strong style={{ color: 'white' }}>$0 comisión</strong>
               </p>
+            </div>
+
+            {/* BOTONES DE WHATSAPP INTEGRADOS */}
+            <div style={{ borderTop: '1px solid rgba(16,185,129,0.2)', paddingTop: '2rem' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-low)', textTransform: 'uppercase', letterSpacing: '0.1rem', marginBottom: '1.2rem', fontWeight: 600 }}>
+                Pactar este cambio con:
+              </p>
+              
+              <div style={{ 
+                display: 'flex', 
+                gap: '0.75rem', 
+                justifyContent: 'center',
+                flexWrap: 'nowrap'
+              }}>
+                <a
+                  href={`https://wa.me/593961230380?text=${encodeURIComponent(`¡Hola Kelvin! Vi esta cotización en la web de JK Conversor y quiero pactarla:\n\n🔹 Envío: ${monto} ${origen.codigo} (${origen.nombre})\n🔸 Recibo: ${montoRecibir} ${destino.codigo} (${destino.nombre})\n📊 Tasa: ${tasaDisplay.base} = ${formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} ${tasaDisplay.unidad}\n\n¿Me ayudas con los datos para el depósito?`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    background: '#25D366',
+                    color: 'white',
+                    padding: '1rem 0.5rem',
+                    borderRadius: '1rem',
+                    textDecoration: 'none',
+                    fontSize: isMobile ? '0.85rem' : '1rem',
+                    fontWeight: 800,
+                    boxShadow: '0 10px 20px rgba(37, 211, 102, 0.2)',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                  onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <span style={{ fontSize: '1.2rem' }}>📲</span> Kelvin
+                </a>
+
+                <a
+                  href={`https://wa.me/593998053300?text=${encodeURIComponent(`¡Hola Dario! Vi esta cotización en la web de JK Conversor y quiero pactarla:\n\n🔹 Envío: ${monto} ${origen.codigo} (${origen.nombre})\n🔸 Recibo: ${montoRecibir} ${destino.codigo} (${destino.nombre})\n📊 Tasa: ${tasaDisplay.base} = ${formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} ${tasaDisplay.unidad}\n\n¿Me ayudas con los datos para el depósito?`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    background: '#25D366',
+                    color: 'white',
+                    padding: '1rem 0.5rem',
+                    borderRadius: '1rem',
+                    textDecoration: 'none',
+                    fontSize: isMobile ? '0.85rem' : '1rem',
+                    fontWeight: 800,
+                    boxShadow: '0 10px 20px rgba(37, 211, 102, 0.2)',
+                    transition: 'transform 0.2s'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                  onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <span style={{ fontSize: '1.2rem' }}>📲</span> Dario
+                </a>
+              </div>
             </div>
           </div>
         )}

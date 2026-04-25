@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { cargarPaises, calcularTasaPublica, formatearMonto, getFlagUrl } from './constants'
+import { cargarPaises, calcularTasaEnvio, calcularTasaRecibo, formatearMonto, getFlagUrl } from './constants'
 
 // Gráfica SVG simple de barras — normalizadas al máximo
 function GraficaBarras({ paises }) {
@@ -10,7 +10,7 @@ function GraficaBarras({ paises }) {
 
   if (!seleccionados.length) return null
 
-  const tasas = seleccionados.map(p => calcularTasaPublica(p))
+  const tasas = seleccionados.map(p => calcularTasaEnvio(p))
   const maxTasa = Math.max(...tasas)
 
   const WIDTH = 600
@@ -37,7 +37,7 @@ function GraficaBarras({ paises }) {
 
         {/* Barras */}
         {seleccionados.map((pais, i) => {
-          const tasa = calcularTasaPublica(pais)
+          const tasa = calcularTasaEnvio(pais)
           const normalized = tasa / maxTasa
           const barH = (HEIGHT - PADDING.top - PADDING.bottom) * normalized
           const x = PADDING.left + i * barW + gap / 2
@@ -105,6 +105,7 @@ function GraficaBarras({ paises }) {
 export default function ListaPaises({ modo = 'detal' }) {
   const [paises, setPaises] = useState([])
   const [busqueda, setBusqueda] = useState('')
+  const [listaActiva, setListaActiva] = useState('enviar')
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const esMayor = modo === 'mayor'
 
@@ -124,10 +125,17 @@ export default function ListaPaises({ modo = 'detal' }) {
     p.moneda.toLowerCase().includes(busqueda.toLowerCase())
   )
 
+  const getTasa = (pais) => {
+    if (listaActiva === 'enviar') return calcularTasaEnvio(pais, modo)
+    return calcularTasaRecibo(pais, modo)
+  }
+
+  const labelColumna = listaActiva === 'enviar' ? 'Tasa Enviar / USD' : 'Tasa Recibir / USD'
+
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '1.5rem 1rem' : '2rem 1.5rem' }}>
 
-      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', marginBottom: '0.5rem' }}>
           🌎 Tasas de Cambio{esMayor ? ' Mayor' : ''}
         </h2>
@@ -136,7 +144,54 @@ export default function ListaPaises({ modo = 'detal' }) {
         </p>
       </div>
 
-      {/* Grática de barras */}
+      {/* ── TABS TOGGLE ── */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '2rem',
+      }}>
+        <div style={{
+          display: 'flex',
+          background: 'var(--surface-color)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '1rem',
+          padding: '0.3rem',
+          gap: '0.3rem',
+        }}>
+          {[
+            { key: 'enviar', label: '📤 Tasa Enviar', desc: 'Cuánta moneda entrega JK' },
+            { key: 'recibir', label: '📥 Tasa Recibir', desc: 'Cuánta moneda recibe JK' },
+          ].map(tab => {
+            const activo = listaActiva === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setListaActiva(tab.key)}
+                title={tab.desc}
+                style={{
+                  padding: isMobile ? '0.6rem 1.2rem' : '0.7rem 2rem',
+                  borderRadius: '0.75rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'Manrope, sans-serif',
+                  fontWeight: 700,
+                  fontSize: isMobile ? '0.85rem' : '0.95rem',
+                  transition: 'all 0.25s ease',
+                  background: activo
+                    ? 'var(--primary-color)'
+                    : 'transparent',
+                  color: activo ? 'var(--bg-color)' : 'var(--text-low)',
+                  boxShadow: activo ? '0 0 18px rgba(16,185,129,0.35)' : 'none',
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Gráfica de barras */}
       <div className="glass" style={{ padding: '2rem', marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div>
@@ -170,8 +225,24 @@ export default function ListaPaises({ modo = 'detal' }) {
         {isMobile ? (
           // Vista de tarjetas para móvil y tablet
           <div>
+            {/* Cabecera de la lista activa */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0.75rem 1rem',
+              background: 'rgba(16,185,129,0.08)',
+              borderBottom: '1px solid var(--glass-border)',
+            }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {listaActiva === 'enviar' ? '📤 Tasa Enviar' : '📥 Tasa Recibir'}
+              </span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-low)' }}>
+                {listaActiva === 'enviar' ? 'JK entrega esta moneda' : 'JK recibe esta moneda'}
+              </span>
+            </div>
             {paisesFiltrados.map((pais, idx) => {
-              const tp = calcularTasaPublica(pais, modo)
+              const tp = getTasa(pais)
               const esUSD = pais.codigo === 'USD'
               return (
                 <div
@@ -214,13 +285,13 @@ export default function ListaPaises({ modo = 'detal' }) {
               gridTemplateColumns: '2.5rem 1fr 1fr 1fr 1fr',
               gap: '1rem',
               padding: '1rem 1.5rem',
-              background: 'rgba(0,0,0,0.2)',
+              background: 'rgba(16,185,129,0.08)',
               borderBottom: '1px solid var(--glass-border)',
             }}>
-              {['', 'País', 'Moneda', 'Código ISO', 'Tasa por USD'].map((h, i) => (
+              {['', 'País', 'Moneda', 'Código ISO', labelColumna].map((h, i) => (
                 <div key={i} style={{
                   fontSize: '0.7rem',
-                  color: 'var(--text-low)',
+                  color: i === 4 ? 'var(--primary-color)' : 'var(--text-low)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
                   fontWeight: 700,
@@ -232,7 +303,7 @@ export default function ListaPaises({ modo = 'detal' }) {
             </div>
             {/* Filas */}
             {paisesFiltrados.map((pais, idx) => {
-              const tp = calcularTasaPublica(pais, modo)
+              const tp = getTasa(pais)
               const esUSD = pais.codigo === 'USD'
               return (
                 <div
@@ -279,8 +350,11 @@ export default function ListaPaises({ modo = 'detal' }) {
       </div>
 
       <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-low)', marginTop: '1.5rem' }}>
-        Todas las tasas incluyen el diferencial de cambio de GRUPO JK · Basadas en USD como moneda de referencia
+        {listaActiva === 'enviar'
+          ? '📤 Tasa Enviar — Moneda local que recibe el destinatario por cada 1 USD enviado con GRUPO JK'
+          : '📥 Tasa Recibir — Moneda local que debes entregar a JK para obtener 1 USD'}
       </p>
     </div>
   )
 }
+

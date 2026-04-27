@@ -239,8 +239,38 @@ function App() {
           padding: '2rem',
           borderTop: '1px solid var(--glass-border)',
           color: 'var(--text-low)',
-          fontSize: '0.85rem'
+          fontSize: '0.85rem',
+          background: 'rgba(0,0,0,0.2)'
         }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <p style={{ marginBottom: '0.8rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1rem' }}>Atención al Cliente:</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <a 
+                href="https://wa.me/593961230380" 
+                target="_blank" 
+                rel="noreferrer" 
+                style={{ 
+                  background: '#25D366', color: 'white', padding: '0.5rem 1rem', 
+                  borderRadius: '0.6rem', fontSize: '0.75rem', textDecoration: 'none', 
+                  fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' 
+                }}
+              >
+                🟢 Kelvin
+              </a>
+              <a 
+                href="https://wa.me/593998053300" 
+                target="_blank" 
+                rel="noreferrer" 
+                style={{ 
+                  background: '#25D366', color: 'white', padding: '0.5rem 1rem', 
+                  borderRadius: '0.6rem', fontSize: '0.75rem', textDecoration: 'none', 
+                  fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' 
+                }}
+              >
+                🟢 Dario
+              </a>
+            </div>
+          </div>
           <p>© {new Date().getFullYear()} {brandName}. Todos los derechos reservados.</p>
           <p style={{ marginTop: '0.5rem' }}>
             <span style={{ cursor: 'pointer', opacity: 0.3 }} onDoubleClick={() => navegar('admin-jk')}>⚡</span>

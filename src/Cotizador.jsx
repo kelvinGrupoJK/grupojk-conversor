@@ -664,32 +664,55 @@ export default function Cotizador({ modo = 'detal' }) {
                   />
                 </>
               ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)', fontSize: '1.2rem' }}>
-                      ✓
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                     </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>{nombre} {apellido}</p>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-low)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <span style={{ color: 'var(--primary-color)' }}>●</span> REGISTRADO
-                        <span 
-                          onClick={() => window.location.hash = '#/mis-operaciones'} 
-                          style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.7rem' }}
-                        >
-                          Ver Seguimiento
-                        </span>
+                    <div style={{ textAlign: 'left' }}>
+                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{nombre} {apellido}</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        REGISTRADO
                       </p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setDatosGuardados(false)} 
-                    style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '0.6rem', fontSize: '0.75rem', cursor: 'pointer', transition: 'background 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    Editar
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.8rem' }}>
+                    <button 
+                      onClick={() => window.location.hash = '#/mis-operaciones'}
+                      style={{
+                        padding: '0.6rem 1.2rem',
+                        background: 'var(--primary-color)',
+                        color: 'var(--bg-color)',
+                        border: 'none',
+                        borderRadius: '0.8rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.2)',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                      VER SEGUIMIENTO
+                    </button>
+                    <button 
+                      onClick={() => setDatosGuardados(false)}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        background: 'rgba(255,255,255,0.02)',
+                        color: 'rgba(255,255,255,0.5)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '0.6rem',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Editar
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -232,31 +232,25 @@ export default function AdminPanel({ onLogout }) {
                         value={t.estado} 
                         onChange={(e) => actualizarEstado(t.id, e.target.value)}
                         style={{
-                          background: statusColors.bg,
+                          backgroundColor: statusColors.bg,
                           color: statusColors.color,
                           border: `1px solid ${statusColors.color}`,
-                          padding: '0.4rem 0.8rem',
-                          paddingRight: '1.8rem', // Más espacio para la flecha
+                          padding: '0.4rem 2.2rem 0.4rem 0.8rem',
                           borderRadius: '0.6rem',
                           fontWeight: 700,
-                          fontSize: '0.8rem',
+                          fontSize: '0.75rem',
                           outline: 'none',
-                          boxShadow: 'none',
                           cursor: 'pointer',
                           appearance: 'none',
                           WebkitAppearance: 'none',
                           MozAppearance: 'none',
-                          backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='${statusColors.color.replace('#', '%23')}' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>")`,
+                          backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='${statusColors.color.replace('#', '%23')}' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>")`,
                           backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 0.3rem center',
-                          backgroundSize: '1rem',
-                          minWidth: '130px',
-                          textAlign: 'left',
-                          transition: 'all 0.2s ease',
-                          userSelect: 'none'
+                          backgroundPosition: 'calc(100% - 0.5rem) center',
+                          backgroundSize: '1.2rem',
+                          minWidth: '135px',
+                          transition: 'all 0.2s ease'
                         }}
-                        onFocus={(e) => e.target.style.boxShadow = `0 0 0 2px ${statusColors.color}30`}
-                        onBlur={(e) => e.target.style.boxShadow = 'none'}
                       >
                         {estadosDisponibles.map(est => (
                           <option key={est} value={est} style={{ background: '#0a192f', color: 'white' }}>{est}</option>

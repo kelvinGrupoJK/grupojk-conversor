@@ -28,5 +28,34 @@ Se implementó un sistema de "Shadow Input" donde el usuario ve el formato regio
 - **Rama principal:** `main`.
 - **Visibilidad:** El repositorio es **PÚBLICO** para permitir el alojamiento gratuito en GitHub Pages.
 
+## 4. Dos Listas de Tasas en ListaPaises (Tabs Toggle)
+Se implementaron dos pestañas/tabs en `src/ListaPaises.jsx` para mostrar tasas diferenciadas.
+
+### Tabs disponibles:
+- **📤 Tasa Enviar** → usa `calcularTasaEnvio(pais, modo)` → tasa proveedor `* (1 - margen/100)` (JK entrega moneda al cliente)
+- **📥 Tasa Recibir** → usa `calcularTasaRecibo(pais, modo)` → tasa proveedor `* (1 + margen/100)` (JK recibe moneda del cliente)
+
+### Diseño:
+- Ambos tabs usan el mismo color `--primary-color` (#10B981 verde).
+- Tab activo: fondo verde sólido + glow `rgba(16,185,129,0.35)`.
+- Tab inactivo: fondo transparente, texto `--text-low`.
+- El encabezado de la columna cambia dinámicamente: `"Tasa Enviar / USD"` o `"Tasa Recibir / USD"`.
+- Compatible con vista móvil (cards) y desktop (tabla).
+
+### Estado y función helper:
+```js
+const [listaActiva, setListaActiva] = useState('enviar') // 'enviar' | 'recibir'
+
+const getTasa = (pais) => {
+  if (listaActiva === 'enviar') return calcularTasaEnvio(pais, modo)
+  return calcularTasaRecibo(pais, modo)
+}
+```
+
+### Imports requeridos en ListaPaises.jsx:
+```js
+import { cargarPaises, calcularTasaEnvio, calcularTasaRecibo, formatearMonto, getFlagUrl } from './constants'
+```
+
 ---
-*Automatizado por Antigravity - Ref: 7b6b13a1-8e8c-43b1-a05d-b7aaca4a24d3*
+*Actualizado por Antigravity - Ref: 525d0e68-6f5c-4e7b-9caa-43785829769f*

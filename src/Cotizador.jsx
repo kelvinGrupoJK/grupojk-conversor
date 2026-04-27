@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { cargarPaises, calcularTasaPublica, calcularConversion, calcularConversionInversa, isCajaDolar, formatearMonto, calcularTasaEnvio, calcularTasaRecibo, getFlagUrl, isCustomFlag, isEfectivoVenSubEntry, agruparEfectivoVenezuela, getPaisesParaSelector, parsearMonto, formatearMontoInput } from './constants'
+import { supabase } from './lib/supabase'
 
 // Componente interno para selector de países con buscador responsivo
 function PaisSelector({ label, paises, selected, onSelect, noBottomRadius = false, hideLabel = false }) {
@@ -198,6 +199,11 @@ export default function Cotizador({ modo = 'detal' }) {
   const [evGrupos, setEvGrupos] = useState([])
   const [evEstadoSeleccionado, setEvEstadoSeleccionado] = useState(null)
   const [evSelectTarget, setEvSelectTarget] = useState('destino') // 'origen' | 'destino'
+  
+  const [nombre, setNombre] = useState('')
+  const [apellido, setApellido] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
+  const [procesandoEnlace, setProcesandoEnlace] = useState(false)
 
   const esMayor = modo === 'mayor'
   const isEfectivoVen = (p) => p?.nombre?.toUpperCase().includes('EFECTIVO VENEZUELA') || p?.nombre?.toUpperCase().includes('EFECTIVO VEN');
@@ -238,6 +244,11 @@ export default function Cotizador({ modo = 'detal' }) {
 
     setOrigen(defaultOrigen)
     setDestino(defaultDestino)
+    
+    // Cargar datos cliente
+    setNombre(localStorage.getItem('jk_cliente_nombre') || '')
+    setApellido(localStorage.getItem('jk_cliente_apellido') || '')
+    setWhatsapp(localStorage.getItem('jk_cliente_whatsapp') || '')
   }, [])
 
   useEffect(() => {
@@ -410,6 +421,52 @@ export default function Cotizador({ modo = 'detal' }) {
     return `Estás enviando ${montoEnvFormateado} ${codOrigen} (${origen.nombre}) → ${resFormateado} ${codDestino} (${destino.nombre})`
   }
 
+  const handleGenerarCotizacion = async (vendedorWhatsapp, nombreVendedor) => {
+    if (!nombre.trim() || !apellido.trim() || !whatsapp.trim()) {
+      alert("⚠️ Por favor, ingresa tu Nombre, Apellido y WhatsApp en el formulario antes de contactar a un asesor.")
+      return
+    }
+
+    // Save to local storage
+    localStorage.setItem('jk_cliente_nombre', nombre)
+    localStorage.setItem('jk_cliente_apellido', apellido)
+    localStorage.setItem('jk_cliente_whatsapp', whatsapp)
+
+    setProcesandoEnlace(true)
+    const codigoUnico = `JK-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      const { data, error } = await supabase.from('transacciones').insert([{
+        codigo: codigoUnico,
+        nombre_cliente: nombre,
+        apellido_cliente: apellido,
+        whatsapp_cliente: whatsapp,
+        pais_origen: origen.nombre,
+        moneda_origen: origen.codigo,
+        monto_enviado: parseFloat(parsearMonto(monto)),
+        pais_destino: destino.nombre,
+        moneda_destino: destino.codigo,
+        monto_recibir: parseFloat(parsearMonto(montoRecibir)),
+        tasa_pactada: tasaDisplay.valor,
+        tipo_cliente: modo === 'mayor' ? 'Mayorista' : 'Estándar'
+      }])
+      
+      if(error) console.error("Error al guardar transacción:", error);
+    } catch(err) {
+      console.error(err)
+    }
+
+    setProcesandoEnlace(false)
+
+    const montEnv = formatearMonto(parsearMonto(monto), origen.codigo);
+    const montRec = formatearMonto(parsearMonto(montoRecibir), destino.codigo);
+    const msjTasa = `${tasaDisplay.base} = ${formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} ${tasaDisplay.unidad}`;
+
+    const mensaje = `¡Hola ${nombreVendedor}! Mi código es *${codigoUnico}*\nQuiero realizar esta transacción:\n\n🔹 Envío: ${montEnv} ${origen.codigo} (${origen.nombre})\n🔹 Recibo: ${montRec} ${destino.codigo} (${destino.nombre})\n🔹 Tasa: ${msjTasa}\n\n¿Me ayudas con los datos de ${origen.nombre} para el depósito? Mi nombre es ${nombre} ${apellido}.`
+    
+    window.open(`https://wa.me/${vendedorWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank')
+  }
+
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem 1.5rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
@@ -561,67 +618,102 @@ export default function Cotizador({ modo = 'detal' }) {
               {explicacion()}
             </p>
 
+            {/* Inputs Datos Cliente */}
+            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.2rem' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--primary-color)', marginBottom: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                👤 Tus Datos para el Seguimiento:
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
+                <input
+                  type="text"
+                  placeholder="Tu Nombre"
+                  value={nombre}
+                  onChange={e => setNombre(e.target.value)}
+                  style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', color: 'white', outline: 'none' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Tu Apellido"
+                  value={apellido}
+                  onChange={e => setApellido(e.target.value)}
+                  style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', color: 'white', outline: 'none' }}
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Tu WhatsApp (Ej: +593...)"
+                value={whatsapp}
+                onChange={e => setWhatsapp(e.target.value)}
+                style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', color: 'white', outline: 'none' }}
+              />
+            </div>
+
             <div style={{ borderTop: '1px solid rgba(16,185,129,0.15)', paddingTop: '1rem' }}>
               <p style={{ fontSize: '0.65rem', color: 'var(--text-low)', textTransform: 'uppercase', letterSpacing: '0.1rem', marginBottom: '0.8rem', fontWeight: 600 }}>
                 Realizar este cambio con:
               </p>
               
               <div style={{ display: 'flex', gap: '0.6rem' }}>
-                <a
-                  href={`https://wa.me/593961230380?text=${encodeURIComponent(`¡Hola Kelvin! Quiero realizar esta transacción:\n\n🔹 Envío: ${monto} ${origen.codigo} (${origen.nombre})\n🔹 Recibo: ${montoRecibir} ${destino.codigo} (${destino.nombre})\n🔹 Tasa: ${tasaDisplay.base} = ${formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} ${tasaDisplay.unidad}\n\n¿Me ayudas con los datos de ${origen.nombre} para el depósito?`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleGenerarCotizacion('593961230380', 'Kelvin')}
+                  disabled={procesandoEnlace}
                   style={{
                     flex: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.4rem',
-                    background: '#25D366',
+                    background: procesandoEnlace ? '#1d9348' : '#25D366',
+                    cursor: procesandoEnlace ? 'wait' : 'pointer',
                     color: 'white',
                     padding: '0.8rem 0.4rem',
                     borderRadius: '0.8rem',
+                    border: 'none',
                     textDecoration: 'none',
                     fontSize: '0.85rem',
                     fontWeight: 800,
                     boxShadow: '0 4px 12px rgba(37, 211, 102, 0.15)',
-                    transition: 'transform 0.2s'
+                    transition: 'transform 0.2s',
+                    opacity: procesandoEnlace ? 0.7 : 1
                   }}
-                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                  onMouseOver={e => !procesandoEnlace && (e.currentTarget.style.transform = 'scale(1.03)')}
                   onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                 >
                     <svg width="20" height="20" viewBox="0 0 448 512" fill="currentColor">
                       <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.4-8.6-44.6-27.6-16.5-14.7-27.6-32.8-30.8-38.4-3.2-5.6-.3-8.6 2.5-11.4 2.5-2.5 5.5-6.5 8.3-9.7 2.8-3.2 3.7-5.6 5.5-9.2 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.3 5.7 23.7 9.2 31.7 11.7 13.3 4.2 25.4 3.6 35 2.2 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
-                    </svg> Kelvin
-                </a>
+                    </svg> Kelvin {procesandoEnlace && "..."}
+                </button>
 
-                <a
-                  href={`https://wa.me/593998053300?text=${encodeURIComponent(`¡Hola Dario! Quiero realizar esta transacción:\n\n🔹 Envío: ${monto} ${origen.codigo} (${origen.nombre})\n🔹 Recibo: ${montoRecibir} ${destino.codigo} (${destino.nombre})\n🔹 Tasa: ${tasaDisplay.base} = ${formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} ${tasaDisplay.unidad}\n\n¿Me ayudas con los datos de ${origen.nombre} para el depósito?`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleGenerarCotizacion('593998053300', 'Dario')}
+                  disabled={procesandoEnlace}
                   style={{
                     flex: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.4rem',
-                    background: '#25D366',
+                    background: procesandoEnlace ? '#1d9348' : '#25D366',
+                    cursor: procesandoEnlace ? 'wait' : 'pointer',
                     color: 'white',
                     padding: '0.8rem 0.4rem',
                     borderRadius: '0.8rem',
+                    border: 'none',
                     textDecoration: 'none',
                     fontSize: '0.85rem',
                     fontWeight: 800,
                     boxShadow: '0 4px 12px rgba(37, 211, 102, 0.15)',
-                    transition: 'transform 0.2s'
+                    transition: 'transform 0.2s',
+                    opacity: procesandoEnlace ? 0.7 : 1
                   }}
-                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                  onMouseOver={e => !procesandoEnlace && (e.currentTarget.style.transform = 'scale(1.03)')}
                   onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                 >
                   <svg width="20" height="20" viewBox="0 0 448 512" fill="currentColor">
                     <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-5.5-2.8-23.4-8.6-44.6-27.6-16.5-14.7-27.6-32.8-30.8-38.4-3.2-5.6-.3-8.6 2.5-11.4 2.5-2.5 5.5-6.5 8.3-9.7 2.8-3.2 3.7-5.6 5.5-9.2 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 13.3 5.7 23.7 9.2 31.7 11.7 13.3 4.2 25.4 3.6 35 2.2 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
-                  </svg> Dario
-                </a>
+                  </svg> Dario {procesandoEnlace && "..."}
+                </button>
               </div>
             </div>
           </div>

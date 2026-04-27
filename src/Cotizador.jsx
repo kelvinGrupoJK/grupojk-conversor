@@ -620,9 +620,14 @@ export default function Cotizador({ modo = 'detal' }) {
 
             {/* Inputs Datos Cliente */}
             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.2rem' }}>
-              <p style={{ fontSize: '0.75rem', color: 'var(--primary-color)', marginBottom: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                👤 Tus Datos para el Seguimiento:
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, margin: 0 }}>
+                  👤 Tus Datos para el Seguimiento:
+                </p>
+                <span style={{ fontSize: '0.65rem', color: '#ff4d4d', fontWeight: 800, textTransform: 'uppercase', padding: '0.2rem 0.5rem', background: 'rgba(255, 77, 77, 0.1)', borderRadius: '0.4rem', border: '1px solid rgba(255, 77, 77, 0.2)' }}>
+                  ⚠️ Solo te lo pediremos una vez
+                </span>
+              </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
                 <input

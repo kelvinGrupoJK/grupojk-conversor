@@ -263,6 +263,11 @@ export function obtenerTasasProcesadas(paisOrigen, paisDestino, paises, modo = '
         tasaDestinoDesdeDolares = tBaseD * (1 - mD / 100);
       } else if (!origDolar && destDolar) {
         // Caso inverso (Local -> USD)
+        // Sumamos el margen de recibo del origen al margen de envío del destino
+        const mO = (modo === 'mayor' && parseFloat(origen.margenReciboMayor) > 0) ? parseFloat(origen.margenReciboMayor) : (parseFloat(origen.margenRecibo) || 0);
+        const mD = (modo === 'mayor' && parseFloat(destino.margenEnvioMayor) > 0) ? parseFloat(destino.margenEnvioMayor) : (parseFloat(destino.margenEnvio) || 0);
+        const tBaseO = parseFloat(origen.tasaProveedorRecibo !== undefined ? origen.tasaProveedorRecibo : (origen.tasaProveedor || 0));
+        tasaOrigenParaDolares = tBaseO * (1 + (mO + mD) / 100);
         tasaDestinoDesdeDolares = 1;
       }
     }

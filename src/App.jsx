@@ -5,6 +5,7 @@ import Cotizador from './Cotizador'
 import ListaPaises from './ListaPaises'
 import AdminPanel from './AdminPanel'
 import LoginAdmin from './LoginAdmin'
+import MisOperaciones from './MisOperaciones'
 
 const CLAVE_MAYOR = '1234jk'
 
@@ -200,6 +201,7 @@ function App() {
               <>
                 <button onClick={() => navegar('inicio')} className={`nav-link ${ruta === 'inicio' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Inicio</button>
                 <button onClick={() => navegar('cotizador')} className={`nav-link ${ruta === 'cotizador' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Cotizador</button>
+                <button onClick={() => navegar('mis-operaciones')} className={`nav-link ${ruta === 'mis-operaciones' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Mis Operaciones' : 'Mis Operaciones'}</button>
                 <button onClick={() => navegar('tasas')} className={`nav-link ${ruta === 'tasas' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Tasas' : 'Lista de Tasas'}</button>
               </>
             )}
@@ -213,6 +215,7 @@ function App() {
         {ruta === 'inicio' && <Dashboard onNavegar={navegar} modo="detal" />}
         {ruta === 'cotizador' && <Cotizador modo="detal" />}
         {ruta === 'tasas' && <ListaPaises modo="detal" />}
+        {ruta === 'mis-operaciones' && <MisOperaciones />}
         
         {/* MAYOR */}
         {ruta === 'mayor-inicio' && mayorAuth && <Dashboard onNavegar={navegar} modo="mayor" />}

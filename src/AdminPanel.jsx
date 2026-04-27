@@ -236,20 +236,27 @@ export default function AdminPanel({ onLogout }) {
                           color: statusColors.color,
                           border: `1px solid ${statusColors.color}`,
                           padding: '0.4rem 0.8rem',
+                          paddingRight: '1.8rem', // Más espacio para la flecha
                           borderRadius: '0.6rem',
                           fontWeight: 700,
                           fontSize: '0.8rem',
                           outline: 'none',
+                          boxShadow: 'none',
                           cursor: 'pointer',
                           appearance: 'none',
                           WebkitAppearance: 'none',
                           MozAppearance: 'none',
                           backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='${statusColors.color.replace('#', '%23')}' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>")`,
                           backgroundRepeat: 'no-repeat',
-                          backgroundPositionX: 'calc(100% - 0.2rem)',
-                          backgroundPositionY: 'center',
-                          paddingRight: '1.5rem',
+                          backgroundPosition: 'right 0.3rem center',
+                          backgroundSize: '1rem',
+                          minWidth: '130px',
+                          textAlign: 'left',
+                          transition: 'all 0.2s ease',
+                          userSelect: 'none'
                         }}
+                        onFocus={(e) => e.target.style.boxShadow = `0 0 0 2px ${statusColors.color}30`}
+                        onBlur={(e) => e.target.style.boxShadow = 'none'}
                       >
                         {estadosDisponibles.map(est => (
                           <option key={est} value={est} style={{ background: '#0a192f', color: 'white' }}>{est}</option>

@@ -673,6 +673,12 @@ export default function Cotizador({ modo = 'detal' }) {
                       <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>{nombre} {apellido}</p>
                       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-low)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <span style={{ color: 'var(--primary-color)' }}>●</span> REGISTRADO
+                        <span 
+                          onClick={() => window.location.hash = '#/mis-operaciones'} 
+                          style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.7rem' }}
+                        >
+                          Ver Seguimiento
+                        </span>
                       </p>
                     </div>
                   </div>

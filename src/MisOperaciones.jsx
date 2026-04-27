@@ -1,0 +1,190 @@
+import React, { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+
+export default function MisOperaciones() {
+  const [transacciones, setTransacciones] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [whatsapp, setWhatsapp] = useState(localStorage.getItem('jk_cliente_whatsapp') || '')
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 600)
+    window.addEventListener('resize', handleResize)
+    fetchMisTransacciones()
+
+    // Suscribirse a cambios en tiempo real para que el cliente vea el cambio de estado sin refrescar
+    const channel = supabase
+      .channel('mis-cambios-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transacciones' }, () => {
+        fetchMisTransacciones()
+      })
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  async function fetchMisTransacciones() {
+    if (!whatsapp) {
+      setLoading(false)
+      return
+    }
+    try {
+      const { data, error } = await supabase
+        .from('transacciones')
+        .select('*')
+        .eq('whatsapp_cliente', whatsapp)
+        .order('fecha', { ascending: false })
+
+      if (error) throw error
+      setTransacciones(data || [])
+    } catch (err) {
+      console.error('Error fetching transactions:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusColor = (estado) => {
+    switch (estado) {
+      case 'Completada': return '#10b981';
+      case 'Verificando': return '#f59e0b';
+      case 'Cancelada': return '#ef4444';
+      default: return '#3b82f6';
+    }
+  }
+
+  const getStatusIcon = (estado) => {
+    switch (estado) {
+      case 'Completada': return '✅';
+      case 'Verificando': return '🔍';
+      case 'Cancelada': return '❌';
+      default: return '🕒';
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'white' }}>
+        <p>Buscando tus transacciones...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '1.5rem' : '3rem 2rem' }}>
+      <header style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
+        <h1 style={{ fontSize: isMobile ? '1.8rem' : '2.5rem', fontWeight: 800, color: 'white', marginBottom: '0.8rem' }}>
+          Mis Operaciones
+        </h1>
+        <p style={{ color: 'var(--text-low)', fontSize: '0.95rem' }}>
+          Consulta el estado de tus envíos en tiempo real
+        </p>
+      </header>
+
+      {!whatsapp || transacciones.length === 0 ? (
+        <div className="glass" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📋</div>
+          <h3 style={{ color: 'white', marginBottom: '1rem' }}>No tienes transacciones registradas</h3>
+          <p style={{ color: 'var(--text-low)', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
+            Aún no has realizado ninguna cotización con nosotros en este dispositivo.
+          </p>
+          <button 
+            onClick={() => window.location.hash = '#/cotizador'}
+            className="btn-primary"
+            style={{ padding: '0.8rem 2rem' }}
+          >
+            Ir al Cotizador
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          {transacciones.map(tr => (
+            <div key={tr.id} className="glass" style={{ 
+              padding: '1.5rem', 
+              borderLeft: `4px solid ${getStatusColor(tr.estado)}`,
+              animation: 'fadeIn 0.4s'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.2rem' }}>
+                <div>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    fontWeight: 800, 
+                    background: 'rgba(255,255,255,0.05)', 
+                    padding: '0.2rem 0.6rem', 
+                    borderRadius: '0.4rem',
+                    color: 'var(--text-low)',
+                    letterSpacing: '0.05em'
+                  }}>
+                    #{tr.codigo}
+                  </span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-low)', marginTop: '0.4rem' }}>
+                    {new Date(tr.fecha).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem', 
+                  background: `${getStatusColor(tr.estado)}20`, 
+                  padding: '0.4rem 0.8rem', 
+                  borderRadius: '2rem',
+                  border: `1px solid ${getStatusColor(tr.estado)}40`
+                }}>
+                  <span style={{ fontSize: '0.9rem' }}>{getStatusIcon(tr.estado)}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: getStatusColor(tr.estado), textTransform: 'uppercase' }}>
+                    {tr.estado}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto 1fr', gap: '1rem', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.8rem' }}>
+                <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-low)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Envías ({tr.pais_origen})</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>{new Intl.NumberFormat('es-ES').format(tr.monto_enviado)} {tr.moneda_origen}</p>
+                </div>
+                
+                <div style={{ textAlign: 'center', color: 'var(--primary-color)', fontSize: '1.2rem', opacity: 0.5 }}>
+                  {isMobile ? '↓' : '→'}
+                </div>
+
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-low)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Recibes ({tr.pais_destino})</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-color)' }}>{new Intl.NumberFormat('es-ES').format(tr.monto_recibir)} {tr.moneda_destino}</p>
+                </div>
+              </div>
+
+              {tr.estado === 'Pendiente' && (
+                <div style={{ marginTop: '1.2rem', padding: '0.8rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.6rem', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.2rem' }}>💡</span>
+                  <p style={{ fontSize: '0.75rem', color: '#93c5fd', margin: 0, lineHeight: 1.4 }}>
+                    Tu solicitud ha sido recibida. Un asesor se contactará contigo por WhatsApp para concretar el pago.
+                  </p>
+                </div>
+              )}
+
+              {tr.estado === 'Verificando' && (
+                <div style={{ marginTop: '1.2rem', padding: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '0.6rem', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.2rem' }}>🔎</span>
+                  <p style={{ fontSize: '0.75rem', color: '#fcd34d', margin: 0, lineHeight: 1.4 }}>
+                    Estamos validando tu comprobante de pago. En breve procesaremos tu envío.
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+        <p style={{ color: 'var(--text-low)', fontSize: '0.85rem' }}>
+          ¿Necesitas ayuda con una operación? <br/>
+          <a href="https://wa.me/593961230380" target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontWeight: 600, textDecoration: 'none' }}>Contactar Soporte Técnico</a>
+        </p>
+      </div>
+    </div>
+  )
+}

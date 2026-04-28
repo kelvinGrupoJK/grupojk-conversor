@@ -104,6 +104,13 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Redirección forzada si no hay usuario (Capa de Seguridad)
+  useEffect(() => {
+    if (sheetsReady && !user && ruta !== 'login') {
+      navegar('login')
+    }
+  }, [user, ruta, sheetsReady])
+
   // Enrutamiento básico con hash
   useEffect(() => {
     const handleHashChange = () => {

@@ -6,6 +6,8 @@ import ListaPaises from './ListaPaises'
 import AdminPanel from './AdminPanel'
 import LoginAdmin from './LoginAdmin'
 import MisOperaciones from './MisOperaciones'
+import Auth from './Auth'
+import { supabase } from './lib/supabase'
 
 const CLAVE_MAYOR = '1234jk'
 
@@ -63,6 +65,7 @@ function LoginMayor({ onLogin }) {
 
 function App() {
   const [ruta, setRuta] = useState('inicio')
+  const [user, setUser] = useState(null)
   const [auth, setAuth] = useState(false)
   const [mayorAuth, setMayorAuth] = useState(false)
   const [sheetsReady, setSheetsReady] = useState(false)
@@ -79,6 +82,15 @@ function App() {
 
   // Autenticación inicial y Sincronización
   useEffect(() => {
+    // Escuchar cambios en la sesión de Supabase
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
     const isAuth = sessionStorage.getItem('jk_admin_auth')
     if (isAuth) setAuth(true)
 
@@ -88,6 +100,8 @@ function App() {
     sincronizarGoogleSheets().finally(() => {
         setSheetsReady(true)
     })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Enrutamiento básico con hash
@@ -112,7 +126,8 @@ function App() {
     navegar('admin')
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
     sessionStorage.removeItem('jk_admin_auth')
     setAuth(false)
     navegar('inicio')
@@ -123,7 +138,8 @@ function App() {
     navegar('mayor-inicio')
   }
 
-  const handleMayorLogout = () => {
+  const handleMayorLogout = async () => {
+    await supabase.auth.signOut()
     sessionStorage.removeItem('jk_mayor_auth')
     setMayorAuth(false)
     navegar('inicio')
@@ -201,8 +217,37 @@ function App() {
               <>
                 <button onClick={() => navegar('inicio')} className={`nav-link ${ruta === 'inicio' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Inicio</button>
                 <button onClick={() => navegar('cotizador')} className={`nav-link ${ruta === 'cotizador' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>Cotizador</button>
-                <button onClick={() => navegar('mis-operaciones')} className={`nav-link ${ruta === 'mis-operaciones' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Mis Operaciones' : 'Mis Operaciones'}</button>
-                <button onClick={() => navegar('tasas')} className={`nav-link ${ruta === 'tasas' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Tasas' : 'Lista de Tasas'}</button>
+                <button onClick={() => navegar('mis-operaciones')} className={`nav-link ${ruta === 'mis-operaciones' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Mis Cambios' : 'Mis Cambios'}</button>
+                
+                {user ? (
+                   <button 
+                    onClick={handleLogout}
+                    style={{ 
+                      background: 'rgba(239, 68, 68, 0.1)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)', 
+                      borderRadius: '0.6rem', 
+                      color: '#ff4d4d', 
+                      fontSize: '0.75rem', 
+                      padding: '0.4rem 0.8rem', 
+                      cursor: 'pointer', 
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                     Salir
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => navegar('login')}
+                    className="btn-primary"
+                    style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', borderRadius: '0.7rem' }}
+                  >
+                    Ingresar
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -216,6 +261,7 @@ function App() {
         {ruta === 'cotizador' && <Cotizador modo="detal" />}
         {ruta === 'tasas' && <ListaPaises modo="detal" />}
         {ruta === 'mis-operaciones' && <MisOperaciones />}
+        {ruta === 'login' && <Auth onLogin={() => navegar('inicio')} />}
         
         {/* MAYOR */}
         {ruta === 'mayor-inicio' && mayorAuth && <Dashboard onNavegar={navegar} modo="mayor" />}

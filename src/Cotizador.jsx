@@ -200,11 +200,7 @@ export default function Cotizador({ modo = 'detal' }) {
   const [evEstadoSeleccionado, setEvEstadoSeleccionado] = useState(null)
   const [evSelectTarget, setEvSelectTarget] = useState('destino') // 'origen' | 'destino'
   
-  const [nombre, setNombre] = useState('')
-  const [apellido, setApellido] = useState('')
-  const [whatsapp, setWhatsapp] = useState('')
   const [procesandoEnlace, setProcesandoEnlace] = useState(false)
-  const [datosGuardados, setDatosGuardados] = useState(false)
 
   const esMayor = modo === 'mayor'
   const isEfectivoVen = (p) => p?.nombre?.toUpperCase().includes('EFECTIVO VENEZUELA') || p?.nombre?.toUpperCase().includes('EFECTIVO VEN');
@@ -249,17 +245,6 @@ export default function Cotizador({ modo = 'detal' }) {
 
     setOrigen(defaultOrigen)
     setDestino(defaultDestino)
-    
-    // Cargar datos cliente
-    const savedNombre = localStorage.getItem('jk_cliente_nombre') || ''
-    const savedApellido = localStorage.getItem('jk_cliente_apellido') || ''
-    const savedWhatsapp = localStorage.getItem('jk_cliente_whatsapp') || ''
-    setNombre(savedNombre)
-    setApellido(savedApellido)
-    setWhatsapp(savedWhatsapp)
-    if (savedNombre && savedWhatsapp) {
-      setDatosGuardados(true)
-    }
   }, [])
 
   useEffect(() => {
@@ -433,16 +418,18 @@ export default function Cotizador({ modo = 'detal' }) {
   }
 
   const handleGenerarCotizacion = async (vendedorWhatsapp, nombreVendedor) => {
-    if (!nombre.trim() || !apellido.trim() || !whatsapp.trim()) {
-      alert("⚠️ Por favor, ingresa tu Nombre, Apellido y WhatsApp en el formulario antes de contactar a un asesor.")
-      return
+    // Verificar si hay usuario logueado
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      alert("⚠️ Por favor, inicia sesión para realizar transacciones y hacer el seguimiento.");
+      window.location.hash = '#/login';
+      return;
     }
 
-    // Save to local storage
-    localStorage.setItem('jk_cliente_nombre', nombre)
-    localStorage.setItem('jk_cliente_apellido', apellido)
-    localStorage.setItem('jk_cliente_whatsapp', whatsapp)
-    setDatosGuardados(true)
+    // Datos del usuario desde metadata o perfil
+    const nombreUsuario = user.user_metadata?.nombre || user.email.split('@')[0];
+    const whatsappUsuario = user.user_metadata?.whatsapp || '';
 
     setProcesandoEnlace(true)
     const codigoUnico = `JK-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -450,9 +437,9 @@ export default function Cotizador({ modo = 'detal' }) {
     try {
       const { data, error } = await supabase.from('transacciones').insert([{
         codigo: codigoUnico,
-        nombre_cliente: nombre,
-        apellido_cliente: apellido,
-        whatsapp_cliente: whatsapp,
+        nombre_cliente: nombreUsuario,
+        whatsapp_cliente: whatsappUsuario,
+        user_id: user.id, // Enlace a la cuenta
         pais_origen: origen.nombre,
         moneda_origen: origen.codigo,
         monto_enviado: parseFloat(parsearMonto(monto)),
@@ -474,7 +461,7 @@ export default function Cotizador({ modo = 'detal' }) {
     const montRec = formatearMonto(parsearMonto(montoRecibir), destino.codigo);
     const msjTasa = `${tasaDisplay.base} = ${formatearMonto(tasaDisplay.valor, tasaDisplay.unidad)} ${tasaDisplay.unidad}`;
 
-    const mensaje = `¡Hola ${nombreVendedor}! Mi código es *${codigoUnico}*\nQuiero realizar esta transacción:\n\n🔹 Envío: ${montEnv} ${origen.codigo} (${origen.nombre})\n🔹 Recibo: ${montRec} ${destino.codigo} (${destino.nombre})\n🔹 Tasa: ${msjTasa}\n\n¿Me ayudas con los datos de ${origen.nombre} para el depósito? Mi nombre es ${nombre} ${apellido}.`
+    const mensaje = `¡Hola ${nombreVendedor}! Mi código es *${codigoUnico}*\nQuiero realizar esta transacción:\n\n🔹 Envío: ${montEnv} ${origen.codigo} (${origen.nombre})\n🔹 Recibo: ${montRec} ${destino.codigo} (${destino.nombre})\n🔹 Tasa: ${msjTasa}\n\n¿Me ayudas con los datos de ${origen.nombre} para el depósito? Mi nombre en la App es ${nombreUsuario}.`
     
     window.open(`https://wa.me/${vendedorWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
@@ -630,95 +617,41 @@ export default function Cotizador({ modo = 'detal' }) {
               {explicacion()}
             </p>
 
-            {/* Inputs Datos Cliente */}
             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.2rem' }}>
-              {!datosGuardados ? (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.8rem' }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, margin: 0 }}>
-                      👤 Tus Datos para el Seguimiento:
-                    </p>
-                    <span style={{ fontSize: '0.65rem', color: '#ff4d4d', fontWeight: 800, textTransform: 'uppercase', padding: '0.2rem 0.5rem', background: 'rgba(255, 77, 77, 0.1)', borderRadius: '0.4rem', border: '1px solid rgba(255, 77, 77, 0.2)' }}>
-                      ⚠️ Solo te lo pediremos una vez
-                    </span>
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                    <input
-                      type="text"
-                      placeholder="Tu Nombre"
-                      value={nombre}
-                      onChange={e => setNombre(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', color: 'white', outline: 'none' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Tu Apellido"
-                      value={apellido}
-                      onChange={e => setApellido(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', color: 'white', outline: 'none' }}
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Tu WhatsApp (Ej: +593...)"
-                    value={whatsapp}
-                    onChange={e => setWhatsapp(e.target.value)}
-                    style={{ width: '100%', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.8rem', color: 'white', outline: 'none' }}
-                  />
-                </>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)', border: '1px solid rgba(16,185,129,0.3)' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{nombre} {apellido}</p>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        REGISTRADO
+                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Seguimiento Activo</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600 }}>
+                        Tus datos se vincularán a tu cuenta
                       </p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.8rem' }}>
-                    <button 
-                      onClick={() => window.location.hash = '#/mis-operaciones'}
-                      style={{
-                        padding: '0.6rem 1.2rem',
-                        background: 'var(--primary-color)',
-                        color: 'var(--bg-color)',
-                        border: 'none',
-                        borderRadius: '0.8rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.2)',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-                      VER SEGUIMIENTO
-                    </button>
-                    <button 
-                      onClick={() => setDatosGuardados(false)}
-                      style={{
-                        padding: '0.4rem 0.8rem',
-                        background: 'rgba(255,255,255,0.02)',
-                        color: 'rgba(255,255,255,0.5)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '0.6rem',
-                        fontSize: '0.7rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Editar
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => window.location.hash = '#/mis-operaciones'}
+                    style={{
+                      padding: '0.6rem 1.2rem',
+                      background: 'var(--primary-color)',
+                      color: 'var(--bg-color)',
+                      border: 'none',
+                      borderRadius: '0.8rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: '0 4px 15px rgba(16, 185, 129, 0.2)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                    VER MIS CAMBIOS
+                  </button>
                 </div>
-              )}
             </div>
 
             <div style={{ borderTop: '1px solid rgba(16,185,129,0.15)', paddingTop: '1rem' }}>

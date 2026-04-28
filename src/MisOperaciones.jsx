@@ -4,19 +4,22 @@ import { supabase } from './lib/supabase'
 export default function MisOperaciones() {
   const [transacciones, setTransacciones] = useState([])
   const [loading, setLoading] = useState(true)
-  const [whatsapp, setWhatsapp] = useState(localStorage.getItem('jk_cliente_whatsapp') || '')
+  const [user, setUser] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 600)
-    window.addEventListener('resize', handleResize)
-    fetchMisTransacciones()
+    // Verificar sesión inicial
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+      if (user) fetchMisTransacciones(user.id)
+      else setLoading(false)
+    })
 
     // Suscribirse a cambios en tiempo real para que el cliente vea el cambio de estado sin refrescar
     const channel = supabase
       .channel('mis-cambios-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transacciones' }, () => {
-        fetchMisTransacciones()
+        if (user) fetchMisTransacciones(user.id)
       })
       .subscribe()
 
@@ -26,16 +29,12 @@ export default function MisOperaciones() {
     }
   }, [])
 
-  async function fetchMisTransacciones() {
-    if (!whatsapp) {
-      setLoading(false)
-      return
-    }
+  async function fetchMisTransacciones(userId) {
     try {
       const { data, error } = await supabase
         .from('transacciones')
         .select('*')
-        .eq('whatsapp_cliente', whatsapp)
+        .eq('user_id', userId)
         .order('fecha', { ascending: false })
 
       if (error) throw error
@@ -137,12 +136,27 @@ export default function MisOperaciones() {
         </p>
       </header>
 
-      {!whatsapp || transacciones.length === 0 ? (
+      {!user ? (
+        <div className="glass" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>🔐</div>
+          <h3 style={{ color: 'white', marginBottom: '1rem' }}>Inicia sesión para ver tus cambios</h3>
+          <p style={{ color: 'var(--text-low)', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
+            Necesitas estar dentro de tu cuenta para poder rastrear tus operaciones de forma segura.
+          </p>
+          <button 
+            onClick={() => window.location.hash = '#/login'}
+            className="btn-primary"
+            style={{ padding: '0.8rem 2rem' }}
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+      ) : transacciones.length === 0 ? (
         <div className="glass" style={{ padding: '4rem 2rem', textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📋</div>
           <h3 style={{ color: 'white', marginBottom: '1rem' }}>No tienes transacciones registradas</h3>
           <p style={{ color: 'var(--text-low)', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
-            Aún no has realizado ninguna cotización con nosotros en este dispositivo.
+            Aún no has realizado ninguna cotización con esta cuenta.
           </p>
           <button 
             onClick={() => window.location.hash = '#/cotizador'}

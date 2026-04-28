@@ -74,6 +74,7 @@ function App() {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
   const [newWhatsApp, setNewWhatsApp] = useState('')
   const [savingWhatsApp, setSavingWhatsApp] = useState(false)
+  const [errorWSP, setErrorWSP] = useState('')
 
   // Detectar modo a partir de la ruta
   const modoMayor = ruta.startsWith('mayor')
@@ -135,19 +136,40 @@ function App() {
 
   const handleSaveWhatsApp = async (e) => {
     e.preventDefault()
-    if (!newWhatsApp || newWhatsApp.length < 8) return
+    setErrorWSP('')
     
+    // Limpiar el número de espacios
+    const limpio = newWhatsApp.replace(/\s+/g, '')
+
+    // Validación de formato
+    if (!limpio.startsWith('+')) {
+      setErrorWSP('⚠️ El número debe empezar con el código de país (ej: +593)')
+      return
+    }
+
+    if (limpio.length < 11) {
+      setErrorWSP('⚠️ El número parece estar incompleto. Por favor verifícalo.')
+      return
+    }
+
+    if (!/^\+?[0-9]+$/.test(limpio)) {
+      setErrorWSP('⚠️ Solo se permiten números y el símbolo +')
+      return
+    }
+
     setSavingWhatsApp(true)
     const { error } = await supabase
       .from('perfiles')
-      .update({ whatsapp: newWhatsApp })
+      .update({ whatsapp: limpio })
       .eq('id', user.id)
     
     if (!error) {
-      setProfile({ ...profile, whatsapp: newWhatsApp })
+      setProfile({ ...profile, whatsapp: limpio })
       setShowWhatsAppModal(false)
+      // Recargar para aplicar cambios de ruta si es necesario
+      window.location.reload()
     } else {
-      alert('Error al guardar: ' + error.message)
+      setErrorWSP('Error: ' + error.message)
     }
     setSavingWhatsApp(false)
   }
@@ -336,10 +358,18 @@ function App() {
                 placeholder="Ej: +593 987 654 321"
                 className="input-field"
                 value={newWhatsApp}
-                onChange={e => setNewWhatsApp(e.target.value)}
-                style={{ marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.1rem' }}
+                onChange={e => {
+                  setNewWhatsApp(e.target.value)
+                  if (errorWSP) setErrorWSP('')
+                }}
+                style={{ marginBottom: errorWSP ? '0.5rem' : '1.5rem', textAlign: 'center', fontSize: '1.1rem' }}
                 autoFocus
               />
+              {errorWSP && (
+                <p style={{ color: '#ff4d4d', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
+                  {errorWSP}
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={savingWhatsApp}

@@ -70,6 +70,10 @@ function App() {
   const [mayorAuth, setMayorAuth] = useState(false)
   const [sheetsReady, setSheetsReady] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+  const [profile, setProfile] = useState(null)
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
+  const [newWhatsApp, setNewWhatsApp] = useState('')
+  const [savingWhatsApp, setSavingWhatsApp] = useState(false)
 
   // Detectar modo a partir de la ruta
   const modoMayor = ruta.startsWith('mayor')
@@ -103,6 +107,50 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Verificar perfil y WhatsApp
+  useEffect(() => {
+    if (user) {
+      const fetchProfile = async () => {
+        const { data, error } = await supabase
+          .from('perfiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        if (data) {
+          setProfile(data)
+          // Si no tiene WhatsApp y no estamos en la página de login, preguntar
+          if (!data.whatsapp && ruta !== 'login') {
+            setShowWhatsAppModal(true)
+          }
+        }
+      }
+      fetchProfile()
+    } else {
+      setProfile(null)
+      setShowWhatsAppModal(false)
+    }
+  }, [user, ruta])
+
+  const handleSaveWhatsApp = async (e) => {
+    e.preventDefault()
+    if (!newWhatsApp || newWhatsApp.length < 8) return
+    
+    setSavingWhatsApp(true)
+    const { error } = await supabase
+      .from('perfiles')
+      .update({ whatsapp: newWhatsApp })
+      .eq('id', user.id)
+    
+    if (!error) {
+      setProfile({ ...profile, whatsapp: newWhatsApp })
+      setShowWhatsAppModal(false)
+    } else {
+      alert('Error al guardar: ' + error.message)
+    }
+    setSavingWhatsApp(false)
+  }
 
   // Redirección forzada si no hay usuario (Capa de Seguridad)
   useEffect(() => {
@@ -259,6 +307,46 @@ function App() {
             )}
           </div>
         </nav>
+      )}
+
+      {/* Modal Inteligente de WhatsApp */}
+      {showWhatsAppModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '2rem'
+        }}>
+          <div className="glass" style={{ maxWidth: '400px', width: '100%', padding: '2.5rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>📱</div>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '0.8rem', color: 'white' }}>¡Solo un paso más!</h3>
+            <p style={{ color: 'var(--text-low)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              Para procesar tus cambios necesitamos tu número de WhatsApp. Solo lo usaremos para notificarte sobre tus envíos.
+            </p>
+            <form onSubmit={handleSaveWhatsApp}>
+              <input
+                type="text"
+                required
+                placeholder="Ej: +593 987 654 321"
+                className="input-field"
+                value={newWhatsApp}
+                onChange={e => setNewWhatsApp(e.target.value)}
+                style={{ marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.1rem' }}
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={savingWhatsApp}
+                className="btn-primary"
+                style={{ width: '100%', padding: '1rem', fontSize: '1rem' }}
+              >
+                {savingWhatsApp ? 'Guardando...' : '💰 Completar Registro'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Main Content */}

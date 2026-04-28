@@ -38,3 +38,40 @@ create policy "Permitir actualizar transacciones"
 on public.transacciones for update
 to public
 using (true);
+
+-- 3. Tabla de Perfiles (Sincronizada con Auth)
+create table if not exists public.perfiles (
+  id uuid references auth.users on delete cascade not null primary key,
+  full_name text,
+  avatar_url text,
+  whatsapp text,
+  role text default 'cliente',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.perfiles enable row level security;
+
+create policy "Los usuarios pueden ver su propio perfil" on public.perfiles
+  for select using (auth.uid() = id);
+
+create policy "Los usuarios pueden actualizar su propio perfil" on public.perfiles
+  for update using (auth.uid() = id);
+
+-- 4. Función y Trigger para creación automática de perfiles
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.perfiles (id, full_name, avatar_url, whatsapp)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'nombre', new.raw_user_meta_data->>'full_name'),
+    new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'whatsapp'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();

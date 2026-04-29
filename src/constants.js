@@ -293,6 +293,20 @@ export function calcularConversion(paisOrigen, paisDestino, monto, paises, modo 
 export function calcularConversionInversa(paisOrigen, paisDestino, montoRecibir, paises, modo = 'detal') {
   const { tasaOrigenParaDolares, tasaDestinoDesdeDolares } = obtenerTasasProcesadas(paisOrigen, paisDestino, paises, modo)
   if (tasaDestinoDesdeDolares === 0) return 0;
+
+  // Tasa base del proveedor para el destino
+  const tBaseD = parseFloat(paisDestino.tasaProveedorEnvio !== undefined ? paisDestino.tasaProveedorEnvio : (paisDestino.tasaProveedor || 0));
+
+  // Matemática Aditiva para el reverso (ej: 100 de 102)
+  // Si la tasa procesada es menor a la del proveedor, significa que se restó un margen (ej. 1 -> 0.98)
+  // En el reverso, el usuario prefiere sumar ese mismo % (matemática aditiva) para resultados más "redondos".
+  if (tBaseD > 0 && tasaDestinoDesdeDolares < tBaseD) {
+    const margenTotalDecimal = (tBaseD - tasaDestinoDesdeDolares) / tBaseD;
+    // (Monto / TasaBase) * (1 + Margen%) * TasaOrigen
+    const res = (montoRecibir / tBaseD) * (1 + margenTotalDecimal) * tasaOrigenParaDolares;
+    return res;
+  }
+
   const montoEnDolares = montoRecibir / tasaDestinoDesdeDolares
   return montoEnDolares * tasaOrigenParaDolares
 }

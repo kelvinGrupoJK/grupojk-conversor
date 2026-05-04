@@ -112,8 +112,19 @@ function App() {
   const [errorWSP, setErrorWSP] = useState('')
   const [showProfileMenu, setShowProfileMenu] = useState(false)
 
-  // Detectar modo a partir de la ruta
-  const modoMayor = ruta.startsWith('mayor')
+  // Detectar modo persistente
+  const [modoMayor, setModoMayor] = useState(sessionStorage.getItem('jk_active_mode') === 'mayor' || ruta.startsWith('mayor'))
+
+  useEffect(() => {
+    if (ruta.startsWith('mayor')) {
+      sessionStorage.setItem('jk_active_mode', 'mayor')
+      setModoMayor(true)
+    } else if (ruta === 'inicio' || ruta === 'cotizador' || ruta === 'tasas') {
+      // Solo volver a detal si estamos en rutas puras de detal
+      sessionStorage.setItem('jk_active_mode', 'detal')
+      setModoMayor(false)
+    }
+  }, [ruta])
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 600)
@@ -149,49 +160,56 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Verificar perfil y WhatsApp
+  // Verificar perfil y WhatsApp con seguridad de tabla
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
-        const tabla = modoMayor ? 'perfiles_mayor' : 'perfiles_detal'
-        const { data, error } = await supabase
-          .from(tabla)
-          .select('*')
-          .eq('id', user.id)
-          .single()
+        // 1. Intentar buscar en AMBAS tablas para ver dónde pertenece realmente
+        const { data: pMayor } = await supabase.from('perfiles_mayor').select('*').eq('id', user.id).single()
+        const { data: pDetal } = await supabase.from('perfiles_detal').select('*').eq('id', user.id).single()
         
-        if (data) {
-          setProfile(data)
-          
-          // Si es admin, asegurar acceso al panel
-          if (data.role === 'admin') {
+        let perfilEncontrado = pMayor || pDetal
+        let tablaPertenece = pMayor ? 'perfiles_mayor' : (pDetal ? 'perfiles_detal' : null)
+
+        if (perfilEncontrado) {
+          setProfile(perfilEncontrado)
+          // Forzar el modo según la tabla donde se encontró
+          const esMayor = tablaPertenece === 'perfiles_mayor'
+          setModoMayor(esMayor)
+          sessionStorage.setItem('jk_active_mode', esMayor ? 'mayor' : 'detal')
+
+          if (perfilEncontrado.role === 'admin') {
             setAuth(true)
             sessionStorage.setItem('jk_admin_auth', 'true')
           }
 
-          // Si no tiene WhatsApp y no estamos en la página de login, preguntar
-          if (!data.whatsapp && ruta !== 'login' && !ruta.includes('admin')) {
+          if (!perfilEncontrado.whatsapp && ruta !== 'login' && !ruta.includes('admin')) {
             setShowWhatsAppModal(true)
           }
-        } else if (!error || error.code === 'PGRST116') {
-          // Si no existe el perfil en esta tabla, intentar crearlo con metadata
+        } else {
+          // Si no existe, crearlo basándose en el modo activo o metadata
           const { data: newUser } = await supabase.auth.getUser()
           const metadata = newUser.user?.user_metadata
           
-          const { data: created, error: createError } = await supabase
-            .from(tabla)
+          // Prioridad absoluta a la metadata del registro
+          const modoReal = metadata?.tipo === 'mayor' || modoMayor ? 'mayor' : 'detal'
+          const tablaDestino = modoReal === 'mayor' ? 'perfiles_mayor' : 'perfiles_detal'
+
+          const { data: created } = await supabase
+            .from(tablaDestino)
             .insert([{
               id: user.id,
               full_name: metadata?.nombre || metadata?.full_name || user.email?.split('@')[0],
               email: user.email,
               whatsapp: metadata?.whatsapp || '',
-              tipo: modoMayor ? 'mayor' : 'detal'
+              tipo: modoReal
             }])
             .select()
             .single()
             
           if (created) {
             setProfile(created)
+            setModoMayor(modoReal === 'mayor')
             if (!created.whatsapp && ruta !== 'login' && !ruta.includes('admin')) {
               setShowWhatsAppModal(true)
             }
@@ -203,7 +221,7 @@ function App() {
       setProfile(null)
       setShowWhatsAppModal(false)
     }
-  }, [user, ruta])
+  }, [user])
 
   const handleSaveWhatsApp = async (e) => {
     e.preventDefault()
@@ -292,7 +310,9 @@ function App() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     sessionStorage.removeItem('jk_admin_auth')
+    sessionStorage.removeItem('jk_active_mode')
     setAuth(false)
+    setModoMayor(false)
     navegar('inicio')
   }
 
@@ -310,7 +330,9 @@ function App() {
   const handleMayorLogout = async () => {
     await supabase.auth.signOut()
     sessionStorage.removeItem('jk_mayor_auth')
+    sessionStorage.removeItem('jk_active_mode')
     setMayorAuth(false)
+    setModoMayor(false)
     navegar('inicio')
   }
 
@@ -651,14 +673,14 @@ function App() {
         {ruta === 'perfil' && user && <Perfil profile={profile} onUpdate={setProfile} modo={modoMayor ? 'mayor' : 'detal'} />}
         {ruta === 'login' && (
           <Auth 
-            tipo={sessionStorage.getItem('jk_intended_route')?.startsWith('mayor') ? 'mayor' : 'detal'} 
+            tipo={modoMayor || sessionStorage.getItem('jk_intended_route')?.startsWith('mayor') ? 'mayor' : 'detal'} 
             onLogin={() => {
               const intended = sessionStorage.getItem('jk_intended_route')
               if (intended) {
                 sessionStorage.removeItem('jk_intended_route')
                 navegar(intended)
               } else {
-                navegar('inicio')
+                navegar(modoMayor ? 'mayor-inicio' : 'inicio')
               }
             }} 
           />

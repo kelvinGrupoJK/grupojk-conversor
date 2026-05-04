@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 
-export default function Perfil({ profile, onUpdate, modo = 'detal' }) {
+export default function Perfil({ profile, onUpdate, modo = 'detal', onLogout }) {
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || '',
     whatsapp: profile?.whatsapp || '',
@@ -148,7 +148,32 @@ export default function Perfil({ profile, onUpdate, modo = 'detal' }) {
           </button>
         </form>
 
-        <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <button 
+            onClick={() => onLogout && onLogout()}
+            style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid rgba(239, 68, 68, 0.2)', 
+              borderRadius: '0.8rem', 
+              color: '#ff4d4d', 
+              padding: '1rem', 
+              cursor: 'pointer', 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.6rem',
+              fontSize: '1rem',
+              width: '100%',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+            onMouseOut={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            CERRAR SESIÓN
+          </button>
+
           <button 
             onClick={() => window.location.hash = modo === 'mayor' ? '#/mayor-inicio' : '#/inicio'}
             style={{ background: 'none', border: 'none', color: 'var(--text-low)', cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'underline' }}

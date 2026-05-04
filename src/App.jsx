@@ -415,92 +415,29 @@ function App() {
                 <button onClick={() => navegar('mayor-mis-operaciones')} className={`nav-link ${ruta === 'mayor-mis-operaciones' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Mis' : 'Mis Cambios'}</button>
                 
                 {user && (
-                  <div style={{ position: 'relative' }}>
-                    <button 
-                      onClick={() => setShowProfileMenu(!showProfileMenu)}
-                      style={{ 
-                        width: '2.5rem', 
-                        height: '2.5rem', 
-                        borderRadius: '50%', 
-                        background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
-                        border: '2px solid rgba(255,255,255,0.2)',
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textTransform: 'uppercase',
-                        transition: 'all 0.3s ease',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                      }}
-                    >
-                      {profile?.full_name ? profile.full_name.charAt(0) : 'U'}
-                    </button>
-
-                    {showProfileMenu && (
-                      <>
-                        <div 
-                          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} 
-                          onClick={() => setShowProfileMenu(false)} 
-                        />
-                        <div className="glass" style={{
-                          position: 'absolute',
-                          top: '120%',
-                          right: 0,
-                          width: '180px',
-                          padding: '0.5rem',
-                          zIndex: 999,
-                          animation: 'fadeInUp 0.2s ease-out'
-                        }}>
-                          <button 
-                            onClick={() => { navegar('perfil'); setShowProfileMenu(false); }}
-                            style={{ 
-                              width: '100%', 
-                              textAlign: 'left', 
-                              padding: '0.8rem 1rem', 
-                              background: 'none', 
-                              border: 'none', 
-                              color: 'white', 
-                              cursor: 'pointer',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.9rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.6rem'
-                            }}
-                            className="nav-link"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            Mi Perfil
-                          </button>
-                          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.4rem 0' }} />
-                          <button 
-                            onClick={() => { handleMayorLogout(); setShowProfileMenu(false); }}
-                            style={{ 
-                              width: '100%', 
-                              textAlign: 'left', 
-                              padding: '0.8rem 1rem', 
-                              background: 'rgba(239, 68, 68, 0.1)', 
-                              border: 'none', 
-                              color: '#ff4d4d', 
-                              cursor: 'pointer',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.9rem',
-                              fontWeight: 700,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.6rem'
-                            }}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                            CERRAR SESIÓN
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <button 
+                    onClick={() => navegar('perfil')}
+                    style={{ 
+                      width: '2.5rem', 
+                      height: '2.5rem', 
+                      borderRadius: '50%', 
+                      background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textTransform: 'uppercase',
+                      transition: 'all 0.3s ease',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    }}
+                    title="Mi Perfil"
+                  >
+                    {profile?.full_name ? profile.full_name.charAt(0) : 'U'}
+                  </button>
                 )}
               </>
             ) : (
@@ -511,95 +448,29 @@ function App() {
                 <button onClick={() => navegar('mis-operaciones')} className={`nav-link ${ruta === 'mis-operaciones' ? 'active' : ''}`} style={{ background: 'none', border: 'none', fontSize: isMobile ? '0.8rem' : '1rem', cursor: 'pointer', padding: isMobile ? '0.3rem 0.5rem' : undefined }}>{isMobile ? 'Mis' : 'Mis Cambios'}</button>
                 
                 {user ? (
-                  <div style={{ position: 'relative' }}>
-                    <button 
-                      onClick={() => setShowProfileMenu(!showProfileMenu)}
-                      style={{ 
-                        width: '2.5rem', 
-                        height: '2.5rem', 
-                        borderRadius: '50%', 
-                        background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
-                        border: '2px solid rgba(255,255,255,0.2)',
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textTransform: 'uppercase',
-                        transition: 'all 0.3s ease',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                      }}
-                      title={profile?.full_name || 'Mi Perfil'}
-                    >
-                      {profile?.full_name ? profile.full_name.charAt(0) : 'U'}
-                    </button>
-
-                    {showProfileMenu && (
-                      <>
-                        <div 
-                          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} 
-                          onClick={() => setShowProfileMenu(false)} 
-                        />
-                        <div className="glass" style={{
-                          position: 'absolute',
-                          top: '120%',
-                          right: 0,
-                          width: '180px',
-                          padding: '0.5rem',
-                          zIndex: 999,
-                          animation: 'fadeInUp 0.2s ease-out'
-                        }}>
-                          <button 
-                            onClick={() => { navegar('perfil'); setShowProfileMenu(false); }}
-                            style={{ 
-                              width: '100%', 
-                              textAlign: 'left', 
-                              padding: '0.8rem 1rem', 
-                              background: 'none', 
-                              border: 'none', 
-                              color: 'white', 
-                              cursor: 'pointer',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.9rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.6rem'
-                            }}
-                            className="nav-link"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            Mi Perfil
-                          </button>
-                          
-                          <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '0.4rem 0' }} />
-                          
-                          <button 
-                            onClick={() => { modoMayor ? handleMayorLogout() : handleLogout(); setShowProfileMenu(false); }}
-                            style={{ 
-                              width: '100%', 
-                              textAlign: 'left', 
-                              padding: '0.8rem 1rem', 
-                              background: 'rgba(239, 68, 68, 0.1)', 
-                              border: 'none', 
-                              color: '#ff4d4d', 
-                              cursor: 'pointer',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.9rem',
-                              fontWeight: 700,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.6rem'
-                            }}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                            CERRAR SESIÓN
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <button 
+                    onClick={() => navegar('perfil')}
+                    style={{ 
+                      width: '2.5rem', 
+                      height: '2.5rem', 
+                      borderRadius: '50%', 
+                      background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textTransform: 'uppercase',
+                      transition: 'all 0.3s ease',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    }}
+                    title="Mi Perfil"
+                  >
+                    {profile?.full_name ? profile.full_name.charAt(0) : 'U'}
+                  </button>
                 ) : (
                   <button 
                     onClick={() => navegar('login')}
@@ -670,7 +541,14 @@ function App() {
         {ruta === 'cotizador' && <Cotizador modo="detal" />}
         {ruta === 'tasas' && <ListaPaises modo="detal" />}
         {ruta === 'mis-operaciones' && <MisOperaciones modo="detal" />}
-        {ruta === 'perfil' && user && <Perfil profile={profile} onUpdate={setProfile} modo={modoMayor ? 'mayor' : 'detal'} />}
+        {ruta === 'perfil' && user && (
+          <Perfil 
+            profile={profile} 
+            onUpdate={setProfile} 
+            modo={modoMayor ? 'mayor' : 'detal'} 
+            onLogout={modoMayor ? handleMayorLogout : handleLogout}
+          />
+        )}
         {ruta === 'login' && (
           <Auth 
             tipo={modoMayor || sessionStorage.getItem('jk_intended_route')?.startsWith('mayor') ? 'mayor' : 'detal'} 
